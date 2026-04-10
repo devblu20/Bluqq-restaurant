@@ -1,22 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.database import engine, Base
 from app.routers import auth, restaurants, menu
-from fastapi.middleware.cors import CORSMiddleware
 
-# IMPORTANT: Import models here so Base knows about the tables
-from app import models 
-
-# Database tables create/verify
-try:
-    Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created/verified successfully")
-except Exception as e:
-    print(f"❌ Database error: {e}")
+# IMPORTANT: models import BEFORE create_all
+from app import models  
 
 app = FastAPI(title="Restaurant Onboarding API", version="1.0.0")
 
-# CORS Middleware
+
+# ✅ CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -27,12 +21,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+
+# ✅ Safe DB connection (NO CRASH)
+@app.on_event("startup")
+def startup():
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database connected & tables verified")
+    except Exception as e:
+        print("❌ Database error:", e)
+
+
+# ✅ Routes
 app.include_router(auth.router, prefix="/restaurant/auth", tags=["Auth"])
 app.include_router(restaurants.router, prefix="/restaurants", tags=["Restaurants"])
 app.include_router(menu.router, prefix="/restaurants", tags=["Menu"])
 
 
+# ✅ Root route (IMPORTANT for Railway)
 @app.get("/")
 def root():
-    return {"message": "Restaurant Onboarding API is running and CORS is enabled"}
+    return {"message": "Restaurant Onboarding API is running 🚀"}
