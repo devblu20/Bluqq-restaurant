@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt
@@ -13,24 +14,27 @@ SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey_change_in_production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
+# ✅ Suppress noisy passlib/bcrypt version warning
+logging.getLogger("passlib").setLevel(logging.ERROR)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# ✅ STEP 1: SHA256 helper (IMPORTANT)
+# ✅ SHA256 pre-hash to keep password under 72 bytes for bcrypt
 def hash_password_sha256(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-# ✅ STEP 2: Hash password (FIXED)
-def get_password_hash(password):
-    hashed = hash_password_sha256(password)
-    return pwd_context.hash(hashed)
-
-
-# ✅ STEP 3: Verify password (FIXED)
-def verify_password(plain, hashed):
-    hashed_plain = hash_password_sha256(plain)
+# ✅ Verify password
+def verify_password(plain: str, hashed: str) -> bool:
+    hashed_plain = hash_password_sha256(plain)[:72]
     return pwd_context.verify(hashed_plain, hashed)
+
+
+# ✅ Hash password
+def get_password_hash(password: str) -> str:
+    hashed = hash_password_sha256(password)[:72]
+    return pwd_context.hash(hashed)
 
 
 # ✅ JWT token create
@@ -62,7 +66,7 @@ def signup(db: Session, data: SignupRequest) -> AuthResponse:
         phone=data.phone,
         city=data.city,
         business_type=data.business_type,
-        password_hash=get_password_hash(data.password),  # ✅ FIXED
+        password_hash=get_password_hash(data.password),
         status=RestaurantStatus.inactive,
         onboarding_status=OnboardingStatus.started,
     )
