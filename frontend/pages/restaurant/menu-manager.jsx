@@ -9,7 +9,7 @@ import {
   createCategory,
   updateMenuItem,
   uploadMenuImage, // Updated to match our API service
-} from "../../../services/api";
+} from "../../services/api";
 import {
   UtensilsCrossed,
   ArrowLeft,
