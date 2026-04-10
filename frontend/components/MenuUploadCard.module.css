@@ -1,0 +1,265 @@
+.wrap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* ── Dropzone ── */
+.dropzone {
+  border: 2px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 16px;
+  background: #fafafa;
+}
+
+.dropzone:hover {
+  border-color: #6366f1;
+  background: #f5f3ff;
+}
+
+.dragOver {
+  border-color: #6366f1;
+  background: #eef2ff;
+  transform: scale(1.01);
+}
+
+.dropIcon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.dropText {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.dropSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── File list ── */
+.fileList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.fileChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.scanBtn {
+  margin-top: 4px;
+}
+
+/* ── Scanning state ── */
+.scanningWrap {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.scanningText {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.scanningSubtext {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.scanningNote {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ── Review ── */
+.reviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.metaBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── Category section ── */
+.categorySection {
+  margin-bottom: 20px;
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.categoryCount {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ── Item card ── */
+.itemCard {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 8px;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.itemCard:hover {
+  border-color: #a5b4fc;
+}
+
+.removeBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #d1d5db;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.removeBtn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.itemRow {
+  display: flex;
+  gap: 16px;
+}
+
+.inlineInput {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 3px 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.inlineInput:focus {
+  border-bottom-color: #6366f1;
+}
+
+.inlineInput::placeholder {
+  color: #d1d5db;
+}
+
+/* ── Import footer ── */
+.importFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* ── Done state ── */
+.doneWrap {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.doneIcon {
+  width: 56px;
+  height: 56px;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin: 0 auto 16px;
+  font-weight: 700;
+}
+
+@media (max-width: 540px) {
+  .itemRow { flex-direction: column; gap: 8px; }
+  .importFooter { flex-direction: column; gap: 12px; align-items: stretch; }
+  .reviewHeader { flex-direction: column; }
+}
