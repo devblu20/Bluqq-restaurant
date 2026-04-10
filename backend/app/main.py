@@ -14,7 +14,8 @@ app = FastAPI(title="Restaurant Onboarding API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://bluqq-restaurant.vercel.app",  # frontend URL
+        "https://bluqq-restaurant.vercel.app",  # ✅ correct spelling
+        "http://localhost:3000",                # optional (for local dev)
     ],
     allow_credentials=True,
     allow_methods=["*"],
