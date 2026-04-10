@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import auth, restaurants, menu
+from fastapi.middleware.cors import CORSMiddleware
 
 # IMPORTANT: Import models here so Base knows about the tables
 from app import models 
@@ -18,11 +19,7 @@ app = FastAPI(title="Restaurant Onboarding API", version="1.0.0")
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "*" 
-    ],
+    allow_origins=["*"],  # later change to frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
