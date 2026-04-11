@@ -1,25 +1,24 @@
-import type { NextConfig } from "next";
-import path from "path";
+const path = require("path");
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
 
+  // ✅ Updated base path
   basePath: "/restaurant",
 
   webpack: (config) => {
-    // ✅ Add top-level await support
     config.experiments = {
       ...config.experiments,
       topLevelAwait: true,
     };
 
-    // ✅ Your existing alias
     config.resolve.alias["@"] = path.resolve(__dirname);
 
     return config;
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
