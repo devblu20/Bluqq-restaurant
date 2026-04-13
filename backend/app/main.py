@@ -5,25 +5,30 @@ from app.database import engine, Base
 from app.routers import auth, restaurants, menu
 
 # IMPORTANT: models import BEFORE create_all
-from app import models  
+from app import models
 
+# ✅ Create app
 app = FastAPI(title="Restaurant Onboarding API", version="1.0.0")
 
 
-# ✅ CORS Middleware
+# ✅ CORS Middleware (FIXED)
+origins = [
+    "https://www.bluqq.com",
+    "https://bluqq.com",
+    "https://bluqq-restaurant.vercel.app",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://bluqq-restaurant.vercel.app",  # ✅ correct spelling
-        "http://localhost:3000",                # optional (for local dev)
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ✅ Safe DB connection (NO CRASH)
+# ✅ Safe DB connection
 @app.on_event("startup")
 def startup():
     try:
@@ -39,7 +44,13 @@ app.include_router(restaurants.router, prefix="/restaurants", tags=["Restaurants
 app.include_router(menu.router, prefix="/restaurants", tags=["Menu"])
 
 
-# ✅ Root route (IMPORTANT for Railway)
+# ✅ Root route
 @app.get("/")
 def root():
     return {"message": "Restaurant Onboarding API is running 🚀"}
+
+
+# ✅ TEST ROUTE (CORS DEBUG)
+@app.get("/test-cors")
+def test_cors():
+    return {"message": "CORS is working ✅"}
