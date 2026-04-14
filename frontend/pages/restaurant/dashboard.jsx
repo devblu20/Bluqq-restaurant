@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
 import Head from "next/head";
 
 function useRestaurantAuth() {
   return {
-    restaurant: { owner_name: "Arjun Sharma", city: "Mumbai", business_type: "fine_dining" },
+    restaurant: { owner_name: "Arjun Sharma", city: "Mumbai", business_type: "quick_service" },
     loading: false,
     restaurantId: "demo-123",
   };
@@ -18,7 +17,7 @@ const getCategories = async () => ({ data: Array(4).fill(null) });
 import {
   LayoutGrid, BookOpen, ShoppingBag, BarChart2, Settings, User,
   LogOut, ChefHat, PenLine, ArrowRight, Loader2, CheckCircle2,
-  UtensilsCrossed, TrendingUp, Zap, Star, Crown, Gem
+  UtensilsCrossed, TrendingUp, Zap, Flame, Circle
 } from "lucide-react";
 
 const NAV_MAIN = [
@@ -57,12 +56,12 @@ export default function Dashboard() {
   };
 
   if (authLoading || dataLoading) return (
-    <div style={{ minHeight: "100vh", background: "#faf7f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#1a1035,#2d1f5e)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(26,16,53,0.3)" }}>
-          <UtensilsCrossed size={22} color="#c9a84c" />
+    <div style={{ minHeight: "100vh", background: "#eef5f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <UtensilsCrossed size={22} color="white" />
         </div>
-        <Loader2 size={24} color="#c9a84c" style={{ animation: "spin 1s linear infinite" }} />
+        <Loader2 size={24} color="#1a6b3a" style={{ animation: "spin 1s linear infinite" }} />
       </div>
     </div>
   );
@@ -70,7 +69,7 @@ export default function Dashboard() {
   const completionPercent = onboarding?.completion_percent || 0;
   const isLive = liveCheck?.ready_for_launch;
   const ownerInitials = restaurant?.owner_name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "R";
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const checklist = [
     { label: "Basic restaurant info", desc: "Name, location, type configured" },
@@ -80,17 +79,26 @@ export default function Dashboard() {
   ];
 
   const quickActions = [
-    { label: "Edit basic info", desc: "Update restaurant details", icon: PenLine, bg: "#f5f0ff", border: "#d4b8ff", iconColor: "#6d28d9" },
-    { label: "Manage menu", desc: "Add, edit or toggle items", icon: BookOpen, bg: "#fff8e6", border: "#f5d98a", iconColor: "#92600a" },
-    { label: "Order settings", desc: "Payment & delivery config", icon: Settings, bg: "#fff0f5", border: "#f9b8d0", iconColor: "#be185d" },
-    { label: "View analytics", desc: "Orders, revenue & trends", icon: BarChart2, bg: "#f0f5ff", border: "#b8ccf9", iconColor: "#1e40af" },
+    { label: "Edit basic info", desc: "Update restaurant details", icon: PenLine, iconBg: "#1a6b3a", cardBg: "#f4faf6", border: "#cde8d6" },
+    { label: "Manage menu", desc: "Add, edit or toggle items", icon: BookOpen, iconBg: "#d97706", cardBg: "#fefdf4", border: "#f0e4a0" },
+    { label: "Order settings", desc: "Payment & delivery config", icon: Settings, iconBg: "#db2777", cardBg: "#fff5f9", border: "#fbc8dc" },
+    { label: "View analytics", desc: "Orders, revenue & trends", icon: BarChart2, iconBg: "#4f46e5", cardBg: "#f5f4ff", border: "#c4bffa" },
   ];
 
+  // Stat cards exactly matching screenshot
   const stats = [
-    { label: "Menu Items", value: itemCount, icon: BookOpen, bg: "linear-gradient(135deg,#1a1035,#2d1f5e)", glow: "rgba(26,16,53,0.35)" },
-    { label: "Categories", value: catCount, icon: ChefHat, bg: "linear-gradient(135deg,#78350f,#b45309)", glow: "rgba(120,53,15,0.3)" },
-    { label: "Orders Today", value: 0, icon: ShoppingBag, bg: "linear-gradient(135deg,#831843,#be185d)", glow: "rgba(131,24,67,0.3)" },
-    { label: "Setup Status", value: isLive ? "Live" : `${completionPercent}%`, icon: isLive ? Zap : TrendingUp, bg: isLive ? "linear-gradient(135deg,#064e3b,#065f46)" : "linear-gradient(135deg,#312e81,#4338ca)", glow: isLive ? "rgba(6,78,59,0.3)" : "rgba(49,46,129,0.3)" },
+    { label: "MENU ITEMS", value: itemCount, icon: BookOpen, cardBg: "#f4faf6", iconBg: "#1a6b3a", valColor: "#1a2e1f", labelColor: "#6aad7a" },
+    { label: "CATEGORIES", value: catCount, icon: ChefHat, cardBg: "#fefdf0", iconBg: "#d97706", valColor: "#3d2a00", labelColor: "#b08030" },
+    { label: "ORDERS TODAY", value: 0, icon: ShoppingBag, cardBg: "#fff5f8", iconBg: "#db2777", valColor: "#4a0a28", labelColor: "#d05080" },
+    {
+      label: "SETUP STATUS",
+      value: isLive ? "Live" : `${completionPercent}%`,
+      icon: TrendingUp,
+      cardBg: "#f3f2ff",
+      iconBg: "#4f46e5",
+      valColor: "#1e1a5e",
+      labelColor: "#7068c8"
+    },
   ];
 
   return (
@@ -99,146 +107,136 @@ export default function Dashboard() {
         <title>Dashboard | Menuify</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <style>{`
-          *{box-sizing:border-box;}
-          body{background:#faf7f0;margin:0;}
-          @keyframes spin{to{transform:rotate(360deg)}}
-          @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-          .nav-btn:hover{background:rgba(201,168,76,0.08)!important;color:#c9a84c!important;}
-          .stat-card{transition:transform 0.2s ease,box-shadow 0.2s ease;}
-          .stat-card:hover{transform:translateY(-4px);}
-          .action-btn{transition:all 0.18s ease;}
-          .action-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,0.1)!important;}
-          .action-btn:hover .arrow-icon{transform:translateX(3px);opacity:1!important;}
-          .arrow-icon{transition:all 0.18s ease;}
-          .gold-bar{background:linear-gradient(90deg,#c9a84c,#f0d080,#c9a84c);}
-          ::-webkit-scrollbar{width:3px;}
-          ::-webkit-scrollbar-track{background:transparent;}
-          ::-webkit-scrollbar-thumb{background:#c9a84c44;border-radius:4px;}
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #eef5f0; }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.45} }
+          .nav-btn { border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
+          .nav-btn:hover { background: #e6f4ec !important; color: #1a6b3a !important; }
+          .stat-card { transition: transform 0.18s, box-shadow 0.18s; }
+          .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.09) !important; }
+          .action-row { border: none; cursor: pointer; transition: all 0.16s; }
+          .action-row:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.09) !important; }
+          .logout-btn { border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
+          .logout-btn:hover { background: #fff0f3 !important; color: #e11d48 !important; }
+          .progress-bar { background: linear-gradient(90deg,#1a6b3a,#34d058); }
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-thumb { background: #b8d8c4; border-radius: 4px; }
         `}</style>
       </Head>
 
-      <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", minHeight: "100vh", background: "#faf7f0", display: "flex" }}>
+      <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#eef5f0", display: "flex" }}>
 
-        {/* ── Luxury Sidebar ── */}
+        {/* ── Sidebar ── */}
         <aside style={{
-          position: "fixed", top: 0, left: 0, bottom: 0, width: 248,
-          background: "#0f0b1e",
-          borderRight: "1px solid rgba(201,168,76,0.15)",
+          position: "fixed", top: 0, left: 0, bottom: 0, width: 260,
+          background: "#ffffff",
+          borderRight: "1.5px solid #dceee3",
           display: "flex", flexDirection: "column", zIndex: 20,
-          boxShadow: "6px 0 40px rgba(0,0,0,0.2)"
         }}>
-          {/* Subtle top glow */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg,transparent,#c9a84c55,transparent)" }} />
-
           {/* Logo */}
-          <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid rgba(201,168,76,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#c9a84c,#f0d080)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 16px rgba(201,168,76,0.35)" }}>
-                <UtensilsCrossed size={18} color="#1a1035" />
-              </div>
-              <div>
-                <p style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 18, fontWeight: 700, color: "#f0d080", margin: 0, letterSpacing: "0.02em" }}>Menuify</p>
-                <p style={{ fontSize: 9, fontWeight: 600, color: "rgba(201,168,76,0.45)", textTransform: "uppercase", letterSpacing: "0.18em", margin: 0 }}>Restaurant OS</p>
-              </div>
+          <div style={{ padding: "22px 22px 18px", borderBottom: "1.5px solid #edf6f0", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <UtensilsCrossed size={18} color="white" />
+            </div>
+            <div>
+              <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>Menuify</p>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "#6aad7a", textTransform: "uppercase", letterSpacing: "0.14em" }}>Restaurant OS</p>
             </div>
           </div>
 
           {/* Nav */}
-          <nav style={{ flex: 1, padding: "20px 12px", overflowY: "auto" }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: "rgba(201,168,76,0.3)", textTransform: "uppercase", letterSpacing: "0.18em", padding: "0 10px", marginBottom: 8 }}>Main</p>
+          <nav style={{ flex: 1, padding: "20px 14px", overflowY: "auto" }}>
+            <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Navigation</p>
             {NAV_MAIN.map((item) => {
               const active = activePath === item.href;
               return (
                 <button key={item.label} onClick={() => setActivePath(item.href)} className="nav-btn" style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "10px 12px", borderRadius: 10, fontSize: 13,
+                  display: "flex", alignItems: "center", gap: 11, width: "100%",
+                  padding: "11px 12px", borderRadius: 12, fontSize: 14,
                   fontWeight: active ? 700 : 500,
-                  color: active ? "#f0d080" : "rgba(255,255,255,0.35)",
-                  background: active ? "rgba(201,168,76,0.12)" : "transparent",
-                  border: active ? "1px solid rgba(201,168,76,0.2)" : "1px solid transparent",
-                  cursor: "pointer", transition: "all 0.15s", textAlign: "left", marginBottom: 2,
+                  color: active ? "#1a6b3a" : "#4a7a58",
+                  background: active ? "#e6f4ec" : "transparent",
+                  marginBottom: 3,
                 }}>
-                  <item.icon size={14} color={active ? "#c9a84c" : "rgba(255,255,255,0.2)"} />
+                  <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
                   {item.label}
-                  {active && <span style={{ marginLeft: "auto", width: 5, height: 5, borderRadius: "50%", background: "#c9a84c", boxShadow: "0 0 6px #c9a84c" }} />}
+                  {active && <span style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
                 </button>
               );
             })}
 
-            <div style={{ borderTop: "1px solid rgba(201,168,76,0.08)", margin: "14px 0" }} />
-            <p style={{ fontSize: 9, fontWeight: 700, color: "rgba(201,168,76,0.3)", textTransform: "uppercase", letterSpacing: "0.18em", padding: "0 10px", marginBottom: 8 }}>Settings</p>
+            <div style={{ borderTop: "1.5px solid #edf6f0", margin: "16px 0 14px" }} />
+            <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Settings</p>
             {NAV_SETTINGS.map((item) => {
               const active = activePath === item.href;
               return (
                 <button key={item.label} onClick={() => setActivePath(item.href)} className="nav-btn" style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "10px 12px", borderRadius: 10, fontSize: 13,
+                  display: "flex", alignItems: "center", gap: 11, width: "100%",
+                  padding: "11px 12px", borderRadius: 12, fontSize: 14,
                   fontWeight: active ? 700 : 500,
-                  color: active ? "#f0d080" : "rgba(255,255,255,0.35)",
-                  background: active ? "rgba(201,168,76,0.12)" : "transparent",
-                  border: active ? "1px solid rgba(201,168,76,0.2)" : "1px solid transparent",
-                  cursor: "pointer", transition: "all 0.15s", textAlign: "left", marginBottom: 2,
+                  color: active ? "#1a6b3a" : "#4a7a58",
+                  background: active ? "#e6f4ec" : "transparent",
+                  marginBottom: 3,
                 }}>
-                  <item.icon size={14} color={active ? "#c9a84c" : "rgba(255,255,255,0.2)"} />
+                  <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
                   {item.label}
-                  {active && <span style={{ marginLeft: "auto", width: 5, height: 5, borderRadius: "50%", background: "#c9a84c", boxShadow: "0 0 6px #c9a84c" }} />}
+                  {active && <span style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
                 </button>
               );
             })}
           </nav>
 
-          {/* User card */}
-          <div style={{ padding: "12px 12px 16px", borderTop: "1px solid rgba(201,168,76,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(201,168,76,0.07)", border: "1px solid rgba(201,168,76,0.12)", marginBottom: 6 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c,#f0d080)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1a1035", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+          {/* User + Logout */}
+          <div style={{ padding: "14px 14px 18px", borderTop: "1.5px solid #edf6f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#f2f9f4", marginBottom: 6 }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
                 {ownerInitials}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: "#f0d080", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{restaurant?.owner_name}</p>
-                <p style={{ fontSize: 10, color: "rgba(201,168,76,0.4)", margin: 0, textTransform: "capitalize" }}>{restaurant?.business_type?.replace("_", " ")}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#1a2e1f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{restaurant?.owner_name}</p>
+                <p style={{ fontSize: 11, color: "#9dbeaa", textTransform: "capitalize" }}>{restaurant?.business_type?.replace("_", " ")}</p>
               </div>
             </div>
-            <button onClick={handleLogout} style={{
-              display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px",
-              borderRadius: 10, fontSize: 12, color: "rgba(255,255,255,0.2)",
-              background: "transparent", border: "none", cursor: "pointer", fontWeight: 500,
-              transition: "all 0.15s"
-            }}
-              onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(248,113,113,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.2)"; e.currentTarget.style.background = "transparent"; }}
-            >
-              <LogOut size={13} /> Sign out
+            <button onClick={handleLogout} className="logout-btn" style={{
+              display: "flex", alignItems: "center", gap: 9, width: "100%",
+              padding: "9px 12px", borderRadius: 12, fontSize: 13, color: "#9dbeaa",
+              background: "transparent", fontWeight: 500,
+            }}>
+              <LogOut size={15} />
+              Sign out
             </button>
           </div>
         </aside>
 
-        {/* ── Main Content ── */}
-        <div style={{ marginLeft: 248, flex: 1, minWidth: 0 }}>
-          <main style={{ maxWidth: 980, margin: "0 auto", padding: "36px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+        {/* ── Main ── */}
+        <div style={{ marginLeft: 260, flex: 1, minWidth: 0 }}>
+          <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 32px", display: "flex", flexDirection: "column", gap: 22 }}>
 
-            {/* ── Header ── */}
+            {/* ── Topbar ── */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
-                <p style={{ fontSize: 11, color: "#b8a070", fontWeight: 500, margin: "0 0 4px", letterSpacing: "0.05em" }}>{today}</p>
-                <h1 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 32, fontWeight: 700, color: "#1a1035", margin: 0, letterSpacing: "-0.01em" }}>
-                  Good Day, {restaurant?.owner_name?.split(" ")[0]}
-                </h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.4 9.6H22.4L16 14.4L18.4 22L12 17.2L5.6 22L8 14.4L1.6 9.6H9.6L12 2Z" fill="#1a6b3a" /></svg>
+                  <p style={{ fontSize: 12, color: "#6aad7a", fontWeight: 500 }}>{today}</p>
+                </div>
+                <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Dashboard</h1>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {isLive ? (
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, padding: "7px 16px", borderRadius: 999, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", letterSpacing: "0.03em" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 999, background: "white", color: "#166534", border: "1.5px solid #bbf7d0" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
                     Live & Accepting Orders
                   </span>
                 ) : (
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, padding: "7px 16px", borderRadius: 999, background: "#fffbeb", color: "#92600a", border: "1px solid #fde68a", letterSpacing: "0.03em" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 999, background: "white", color: "#92600a", border: "1.5px solid #e0cc80" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706" }} />
                     Setup in Progress
                   </span>
                 )}
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c,#f0d080)", display: "flex", alignItems: "center", justifyContent: "center", color: "#1a1035", fontSize: 12, fontWeight: 800, boxShadow: "0 4px 14px rgba(201,168,76,0.35)" }}>
+                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 13, fontWeight: 800 }}>
                   {ownerInitials}
                 </div>
               </div>
@@ -246,102 +244,91 @@ export default function Dashboard() {
 
             {/* ── Hero Banner ── */}
             <div style={{
-              position: "relative", overflow: "hidden", borderRadius: 28,
-              background: "linear-gradient(135deg, #0f0b1e 0%, #1a1035 40%, #2d1f5e 100%)",
-              padding: "40px 44px",
-              boxShadow: "0 24px 64px rgba(15,11,30,0.3), 0 0 0 1px rgba(201,168,76,0.15)"
+              position: "relative", overflow: "hidden", borderRadius: 24,
+              background: "linear-gradient(135deg, #0f3d20 0%, #1a6b3a 50%, #22a855 100%)",
+              padding: "38px 44px",
+              boxShadow: "0 16px 48px rgba(26,107,58,0.22)"
             }}>
-              {/* Glow effects */}
-              <div style={{ position: "absolute", top: -60, right: -60, width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,168,76,0.12),transparent 70%)", pointerEvents: "none" }} />
-              <div style={{ position: "absolute", bottom: -40, left: "30%", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle,rgba(139,92,246,0.1),transparent 70%)", pointerEvents: "none" }} />
-              {/* Gold top line */}
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg,transparent,rgba(201,168,76,0.6),transparent)" }} />
+              {/* Decorative circles */}
+              <div style={{ position: "absolute", top: -20, right: 260, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -40, right: 180, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: -30, right: 320, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.08)", pointerEvents: "none" }} />
 
               <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                    <Crown size={13} color="#c9a84c" />
-                    <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(201,168,76,0.5)", textTransform: "uppercase", letterSpacing: "0.2em", margin: 0 }}>Welcome back</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+                    <Flame size={13} color="#fde047" />
+                    <p style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.2em" }}>Welcome Back</p>
                   </div>
-                  <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 44, fontWeight: 700, color: "#f5efe0", margin: "0 0 18px", letterSpacing: "-0.01em", lineHeight: 1.05 }}>
-                    {restaurant?.owner_name} <span style={{ fontSize: 36 }}>✦</span>
+                  <h2 style={{ fontSize: 42, fontWeight: 800, color: "white", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 18 }}>
+                    {restaurant?.owner_name} 👋
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ padding: "5px 14px", borderRadius: 8, background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", fontSize: 12, color: "rgba(240,208,128,0.8)", fontWeight: 600, textTransform: "capitalize" }}>
+                    <span style={{ padding: "5px 14px", borderRadius: 8, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>
                       {restaurant?.city}
                     </span>
-                    <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(201,168,76,0.3)" }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", textTransform: "capitalize", fontWeight: 500 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.3)" }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 500, textTransform: "capitalize" }}>
                       {restaurant?.business_type?.replace("_", " ")}
                     </span>
                   </div>
                 </div>
 
-                {/* Ring */}
+                {/* Yellow progress ring — exact match to screenshot */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                  <div style={{ position: "relative", width: 120, height: 120 }}>
-                    <svg style={{ width: 120, height: 120, transform: "rotate(-90deg)" }} viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(201,168,76,0.1)" strokeWidth="6" />
+                  <div style={{ position: "relative", width: 130, height: 130 }}>
+                    <svg style={{ width: 130, height: 130, transform: "rotate(-90deg)" }} viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
                       <circle
                         cx="50" cy="50" r="40" fill="none"
-                        stroke="url(#luxRing)" strokeWidth="6"
+                        stroke="#fde047" strokeWidth="7"
                         strokeLinecap="round"
                         strokeDasharray={`${2 * Math.PI * 40}`}
                         strokeDashoffset={`${2 * Math.PI * 40 * (1 - completionPercent / 100)}`}
-                        style={{ transition: "stroke-dashoffset 1.2s ease" }}
+                        style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 6px rgba(253,224,71,0.6))" }}
                       />
-                      <defs>
-                        <linearGradient id="luxRing" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="#c9a84c" />
-                          <stop offset="50%" stopColor="#f0d080" />
-                          <stop offset="100%" stopColor="#c9a84c" />
-                        </linearGradient>
-                      </defs>
                     </svg>
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <Gem size={13} color="#c9a84c" style={{ marginBottom: 2 }} />
-                      <p style={{ fontSize: 26, fontWeight: 800, color: "#f0d080", margin: 0, lineHeight: 1 }}>{completionPercent}<span style={{ fontSize: 13 }}>%</span></p>
+                      <p style={{ fontSize: 30, fontWeight: 800, color: "white", lineHeight: 1 }}>{completionPercent}<span style={{ fontSize: 16, fontWeight: 700 }}>%</span></p>
                     </div>
                   </div>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: "rgba(201,168,76,0.35)", textTransform: "uppercase", letterSpacing: "0.18em", margin: 0 }}>Onboarding</p>
+                  <p style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.2em" }}>Onboarding</p>
                 </div>
               </div>
             </div>
 
-            {/* ── Stat Cards ── */}
+            {/* ── Stat Cards — matching screenshot exactly ── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
               {stats.map((stat) => (
                 <div key={stat.label} className="stat-card" style={{
-                  background: stat.bg, borderRadius: 20, padding: "22px 22px",
-                  boxShadow: `0 8px 32px ${stat.glow}, 0 0 0 1px rgba(255,255,255,0.08)`,
-                  position: "relative", overflow: "hidden"
+                  background: stat.cardBg, borderRadius: 20, padding: "24px 24px",
+                  border: "1.5px solid rgba(255,255,255,0.9)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.05)"
                 }}>
-                  <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)" }} />
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <stat.icon size={18} color="rgba(255,255,255,0.85)" />
+                  <div style={{ width: 46, height: 46, borderRadius: 14, background: stat.iconBg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                    <stat.icon size={20} color="white" />
                   </div>
-                  <p style={{ fontSize: 34, fontWeight: 800, color: "white", margin: "0 0 4px", letterSpacing: "-0.03em", lineHeight: 1 }}>{stat.value}</p>
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{stat.label}</p>
+                  <p style={{ fontSize: 38, fontWeight: 800, color: stat.valColor, letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>{stat.value}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: stat.labelColor, textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</p>
                 </div>
               ))}
             </div>
 
-            {/* ── Bottom Cards ── */}
+            {/* ── Bottom Grid ── */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
-              {/* Checklist */}
-              <div style={{ background: "white", borderRadius: 24, padding: 28, boxShadow: "0 4px 24px rgba(26,16,53,0.07), 0 0 0 1px rgba(201,168,76,0.1)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+              {/* Go-live Checklist */}
+              <div style={{ background: "white", borderRadius: 22, padding: "26px 26px", border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg,#1a1035,#2d1f5e)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(26,16,53,0.25)" }}>
-                      <CheckCircle2 size={15} color="#c9a84c" />
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <CheckCircle2 size={17} color="#1a6b3a" />
                     </div>
-                    <h3 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 700, color: "#1a1035", margin: 0 }}>Go-live Checklist</h3>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Go-live Checklist</h3>
                   </div>
                   {completionPercent === 100 && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 700, color: "#92600a", background: "#fffbeb", padding: "4px 12px", borderRadius: 999, border: "1px solid #fde68a" }}>
-                      <Star size={9} fill="#f59e0b" color="#f59e0b" /> Ready
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#1a6b3a", background: "#e6f4ec", padding: "4px 12px", borderRadius: 999, border: "1.5px solid #b8ddc4" }}>
+                      Ready ✓
                     </span>
                   )}
                 </div>
@@ -351,68 +338,71 @@ export default function Dashboard() {
                     const done = onboarding?.steps?.[i]?.completed ?? (completionPercent === 100);
                     return (
                       <div key={item.label} style={{
-                        display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14,
-                        background: done ? "#faf7f0" : "#fafafa",
-                        border: `1px solid ${done ? "rgba(201,168,76,0.2)" : "#f3f0ea"}`,
-                        transition: "all 0.15s"
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "11px 14px", borderRadius: 14,
+                        background: done ? "#f4faf6" : "#fafafa",
+                        border: `1.5px solid ${done ? "#cde8d6" : "#f0ece8"}`,
                       }}>
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: done ? "linear-gradient(135deg,#c9a84c,#f0d080)" : "transparent", border: done ? "none" : "2px solid #e5ddd0", boxShadow: done ? "0 3px 10px rgba(201,168,76,0.3)" : "none" }}>
-                          {done && <CheckCircle2 size={13} color="#1a1035" strokeWidth={2.5} />}
+                        <div style={{
+                          width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: done ? "#1a6b3a" : "transparent",
+                          border: done ? "none" : "2px solid #d4d0ca",
+                          boxShadow: done ? "0 2px 8px rgba(26,107,58,0.25)" : "none"
+                        }}>
+                          {done && <CheckCircle2 size={13} color="white" strokeWidth={2.5} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: done ? 700 : 500, color: done ? "#1a1035" : "#c0b8ac", margin: 0 }}>{item.label}</p>
-                          <p style={{ fontSize: 11, color: done ? "#b8a070" : "#d4cfc8", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</p>
+                          <p style={{ fontSize: 13, fontWeight: done ? 600 : 500, color: done ? "#1a2e1f" : "#b0a898" }}>{item.label}</p>
+                          <p style={{ fontSize: 11, color: done ? "#7aad8a" : "#c8c0b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</p>
                         </div>
-                        {done && (
-                          <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#faf0d0", border: "1px solid rgba(201,168,76,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Star size={9} color="#c9a84c" fill="#c9a84c" />
-                          </div>
-                        )}
+                        {done && <Zap size={12} color="#1a6b3a" fill="#1a6b3a" style={{ flexShrink: 0 }} />}
                       </div>
                     );
                   })}
                 </div>
 
-                <div style={{ marginTop: 22, paddingTop: 18, borderTop: "1px solid #f3f0ea" }}>
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1.5px solid #edf6f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
-                    <span style={{ color: "#c0b8ac" }}>Progress</span>
-                    <span style={{ color: "#c9a84c" }}>{completionPercent}%</span>
+                    <span style={{ color: "#9dbeaa" }}>Progress</span>
+                    <span style={{ color: "#1a6b3a" }}>{completionPercent}%</span>
                   </div>
-                  <div style={{ height: 6, background: "#f3f0ea", borderRadius: 999, overflow: "hidden" }}>
-                    <div className="gold-bar" style={{ height: "100%", width: `${completionPercent}%`, borderRadius: 999, transition: "width 1.2s ease", boxShadow: "0 0 8px rgba(201,168,76,0.4)" }} />
+                  <div style={{ height: 7, background: "#e6f4ec", borderRadius: 999, overflow: "hidden" }}>
+                    <div className="progress-bar" style={{ height: "100%", width: `${completionPercent}%`, borderRadius: 999, transition: "width 1.2s ease" }} />
                   </div>
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div style={{ background: "white", borderRadius: 24, padding: 28, boxShadow: "0 4px 24px rgba(26,16,53,0.07), 0 0 0 1px rgba(201,168,76,0.1)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg,#1a1035,#2d1f5e)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(26,16,53,0.25)" }}>
-                    <Zap size={15} color="#c9a84c" fill="#c9a84c" />
+              <div style={{ background: "white", borderRadius: 22, padding: "26px 26px", border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Zap size={17} color="#1a6b3a" fill="#1a6b3a" />
                   </div>
-                  <h3 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 17, fontWeight: 700, color: "#1a1035", margin: 0 }}>Quick Actions</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Quick Actions</h3>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => setActivePath(action.href)}
-                      className="action-btn"
+                      className="action-row"
                       style={{
-                        display: "flex", alignItems: "center", gap: 14, padding: "13px 16px",
-                        borderRadius: 16, background: action.bg, border: `1px solid ${action.border}`,
-                        cursor: "pointer", textAlign: "left", width: "100%",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "12px 14px", borderRadius: 14,
+                        background: action.cardBg, border: `1.5px solid ${action.border}`,
+                        textAlign: "left", width: "100%",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
                       }}
                     >
-                      <div style={{ width: 38, height: 38, borderRadius: 12, background: "white", border: `1px solid ${action.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                        <action.icon size={15} color={action.iconColor} />
+                      <div style={{ width: 38, height: 38, borderRadius: 12, background: action.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 3px 10px rgba(0,0,0,0.15)" }}>
+                        <action.icon size={16} color="white" />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: "#1a1035", margin: 0 }}>{action.label}</p>
-                        <p style={{ fontSize: 11, color: "#b8a898", margin: 0 }}>{action.desc}</p>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{action.label}</p>
+                        <p style={{ fontSize: 11, color: "#9dbeaa" }}>{action.desc}</p>
                       </div>
-                      <ArrowRight size={14} color={action.iconColor} className="arrow-icon" style={{ opacity: 0.4, flexShrink: 0 }} />
+                      <ArrowRight size={15} color="#9dbeaa" style={{ flexShrink: 0 }} />
                     </button>
                   ))}
                 </div>
