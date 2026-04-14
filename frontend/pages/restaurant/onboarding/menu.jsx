@@ -1,32 +1,29 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import toast from "react-hot-toast";
 import OnboardingLayout from "@/components/OnboardingLayout";
-import { 
-  getCategories, 
-  getMenuItems, 
-  createMenuItem, 
-  createCategory, 
-  updateMenuItem, 
-  uploadMenuImage 
+import {
+  getCategories,
+  getMenuItems,
+  createMenuItem,
+  createCategory,
+  updateMenuItem,
+  uploadMenuImage,
 } from "@/services/api";
-import { 
-  Loader2, Plus, Sparkles, UploadCloud, Search, 
-  X, Tag, ToggleLeft, ToggleRight, CheckCircle2
+import {
+  Loader2, Plus, Sparkles, UploadCloud, Search,
+  X, ToggleLeft, ToggleRight, UtensilsCrossed,
 } from "lucide-react";
-import styles from "./menu.module.css";
 
 export default function MenuPage() {
   const router = useRouter();
   const [restaurantId, setRestaurantId] = useState(null);
-
   const [activeTab, setActiveTab] = useState("scan");
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-
-  // States
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemForm, setItemForm] = useState({ name: "", price: "", description: "", category_id: "" });
   const [newCatName, setNewCatName] = useState("");
@@ -36,10 +33,7 @@ export default function MenuPage() {
 
   useEffect(() => {
     const id = localStorage.getItem("restaurant_id");
-    if (!id) {
-      router.replace("/restaurant/login");
-      return;
-    }
+    if (!id) { router.replace("/restaurant/login"); return; }
     setRestaurantId(id);
   }, [router]);
 
@@ -60,26 +54,21 @@ export default function MenuPage() {
     }
   }, [restaurantId]);
 
-  useEffect(() => {
-    if (restaurantId) loadMenuData();
-  }, [restaurantId, loadMenuData]);
+  useEffect(() => { if (restaurantId) loadMenuData(); }, [restaurantId, loadMenuData]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setScanning(true);
     const formData = new FormData();
     formData.append("file", file);
-
     const toastId = toast.loading("AI is scanning your menu...");
-
     try {
       const res = await uploadMenuImage(restaurantId, formData);
       toast.success(`Success! Added ${res.data.total_items_saved} items.`, { id: toastId });
-      await loadMenuData(); 
+      await loadMenuData();
       setActiveTab("manual");
-    } catch (err) {
+    } catch {
       toast.error("Scan failed. Use a clear photo.", { id: toastId });
     } finally {
       setScanning(false);
@@ -112,7 +101,7 @@ export default function MenuPage() {
       const { data } = await createMenuItem(restaurantId, {
         ...itemForm,
         price: parseFloat(itemForm.price),
-        is_available: true
+        is_available: true,
       });
       setItems((prev) => [...prev, data]);
       setItemForm({ name: "", price: "", description: "", category_id: "" });
@@ -129,201 +118,400 @@ export default function MenuPage() {
     try {
       await updateMenuItem(restaurantId, item.id, { is_available: !item.is_available });
       setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_available: !i.is_available } : i))
+        prev.map((i) => i.id === item.id ? { ...i, is_available: !i.is_available } : i)
       );
     } catch {
       toast.error("Failed to update");
     }
   };
 
-  // Grouping Logic
-  const filteredItems = items.filter(i => 
+  const filteredItems = items.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase())
   );
-
   const grouped = categories.reduce((acc, cat) => {
-    acc[cat.name] = filteredItems.filter(i => i.category_id === cat.id);
+    acc[cat.name] = filteredItems.filter((i) => i.category_id === cat.id);
     return acc;
   }, {});
-  
-  const uncategorized = filteredItems.filter(i => !i.category_id);
+  const uncategorized = filteredItems.filter((i) => !i.category_id);
 
-  if (loading && !items.length) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-orange-500" size={40} /></div>;
+  // ── Loading state ──
+  if (loading && !items.length) return (
+    <div style={{ minHeight: "100vh", background: "#eef5f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <UtensilsCrossed size={22} color="white" />
+        </div>
+        <Loader2 size={24} color="#1a6b3a" style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+    </div>
+  );
 
   return (
-    <OnboardingLayout currentStep="menu" title="Setup Menu">
-      <div className="max-w-4xl mx-auto px-4 pb-20">
-        
-        {/* Header Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <>
+      <Head>
+        <title>Menu Setup | Menuify</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <style>{`
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #eef5f0; font-family: 'Inter', sans-serif; }
+          @keyframes spin  { to { transform: rotate(360deg); } }
+
+          .tab-btn { cursor: pointer; border: none; font-family: 'Inter', sans-serif; transition: background 0.15s, color 0.15s; }
+          .tab-btn:hover { opacity: 0.85; }
+
+          .upload-zone { transition: background 0.18s; cursor: pointer; }
+          .upload-zone:hover { background: #f0faf3 !important; }
+
+          .input-field { font-family: 'Inter', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+          .input-field:focus { border-color: #1a6b3a !important; box-shadow: 0 0 0 3px rgba(26,107,58,0.1); }
+
+          .action-btn { font-family: 'Inter', sans-serif; cursor: pointer; border: none; transition: background 0.15s, transform 0.1s; }
+          .action-btn:hover { opacity: 0.9; }
+          .action-btn:active { transform: scale(0.97); }
+
+          .item-row { transition: border-color 0.15s, box-shadow 0.15s; }
+          .item-row:hover { border-color: #cde8d6 !important; box-shadow: 0 2px 10px rgba(26,107,58,0.07); }
+
+          .toggle-btn { background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; }
+
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-thumb { background: #b8d8c4; border-radius: 4px; }
+        `}</style>
+      </Head>
+
+      <OnboardingLayout currentStep="menu" title="Setup Menu">
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 20px 120px", fontFamily: "'Inter', sans-serif" }}>
+
+          {/* ── Header Card ── */}
+          <div style={{
+            background: "white", borderRadius: 22, padding: "24px 28px",
+            border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
+            marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16,
+          }}>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Your Menu</h1>
-              <p className="text-gray-500 text-sm">Add dishes to start taking orders</p>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", marginBottom: 4 }}>
+                Your Menu
+              </h1>
+              <p style={{ fontSize: 13, color: "#9dbeaa", fontWeight: 500 }}>
+                Add dishes to start taking orders
+              </p>
             </div>
-            <div className="flex bg-gray-100 p-1.5 rounded-2xl">
-              <button 
-                onClick={() => setActiveTab("scan")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === "scan" ? "bg-white text-orange-600 shadow-sm" : "text-gray-500"}`}
-              >
-                <Sparkles size={16} /> AI Scan
-              </button>
-              <button 
-                onClick={() => setActiveTab("manual")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === "manual" ? "bg-white text-orange-600 shadow-sm" : "text-gray-500"}`}
-              >
-                <Plus size={16} /> Manual ({items.length})
-              </button>
+
+            {/* Tab switcher */}
+            <div style={{ display: "flex", background: "#f2f9f4", padding: 5, borderRadius: 14, border: "1.5px solid #dceee3", gap: 4 }}>
+              {[
+                { key: "scan",   icon: Sparkles, label: "AI Scan" },
+                { key: "manual", icon: Plus,      label: `Manual (${items.length})` },
+              ].map(({ key, icon: Icon, label }) => {
+                const active = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className="tab-btn"
+                    style={{
+                      display: "flex", alignItems: "center", gap: 7,
+                      padding: "9px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      background: active ? "#1a6b3a" : "transparent",
+                      color: active ? "white" : "#6aad7a",
+                    }}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </div>
 
-        {/* AI Scan Content */}
-        {activeTab === "scan" && (
-          <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white border-2 border-dashed border-orange-200 rounded-[2rem] p-12 text-center hover:bg-orange-50/50 transition-colors relative group">
-              <input type="file" accept="image/*" onChange={handleFileUpload} disabled={scanning} id="file-upload" className="hidden" />
-              <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                <div className="w-20 h-20 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-500 mb-6 group-hover:scale-110 transition-transform">
-                  {scanning ? <Loader2 className="animate-spin" size={40} /> : <UploadCloud size={40} />}
+          {/* ── AI Scan Tab ── */}
+          {activeTab === "scan" && (
+            <div style={{ background: "white", borderRadius: 22, border: "2px dashed #cde8d6", padding: "60px 40px", textAlign: "center" }}
+              className="upload-zone">
+              <input type="file" accept="image/*" onChange={handleFileUpload} disabled={scanning} id="file-upload" style={{ display: "none" }} />
+              <label htmlFor="file-upload" style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{
+                  width: 80, height: 80, borderRadius: 22,
+                  background: "#f2f9f4", border: "1.5px solid #cde8d6",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: 22,
+                }}>
+                  {scanning
+                    ? <Loader2 size={36} color="#1a6b3a" style={{ animation: "spin 1s linear infinite" }} />
+                    : <UploadCloud size={36} color="#1a6b3a" />}
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: "#111827", letterSpacing: "-0.01em", marginBottom: 10 }}>
                   {scanning ? "AI is reading your menu..." : "Upload Menu Photo"}
                 </h3>
-                <p className="text-gray-500 max-w-xs mx-auto text-sm">
+                <p style={{ fontSize: 13, color: "#9dbeaa", maxWidth: 300, lineHeight: 1.6 }}>
                   Snap a photo of your printed menu. We'll automatically extract names and prices.
                 </p>
               </label>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Manual Content */}
-        {activeTab === "manual" && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            
-            {/* Search & New Cat */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                <input 
-                  className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-300"
-                  placeholder="Search dishes..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+          {/* ── Manual Tab ── */}
+          {activeTab === "manual" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Search + New Category */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {/* Search */}
+                <div style={{ position: "relative" }}>
+                  <Search size={16} color="#9dbeaa" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                  <input
+                    className="input-field"
+                    placeholder="Search dishes..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{
+                      width: "100%", paddingLeft: 40, paddingRight: 14,
+                      paddingTop: 12, paddingBottom: 12,
+                      background: "white", border: "1.5px solid #dceee3",
+                      borderRadius: 14, color: "#111827",
+                    }}
+                  />
+                </div>
+
+                {/* New Category */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="input-field"
+                    placeholder="New category name..."
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+                    style={{
+                      flex: 1, padding: "12px 14px",
+                      background: "white", border: "1.5px solid #dceee3",
+                      borderRadius: 14, color: "#111827",
+                    }}
+                  />
+                  <button
+                    onClick={handleAddCategory}
+                    disabled={addingCat}
+                    className="action-btn"
+                    style={{
+                      padding: "12px 20px", borderRadius: 14, fontSize: 13,
+                      fontWeight: 700, background: "#1a6b3a", color: "white",
+                      opacity: addingCat ? 0.6 : 1,
+                    }}
+                  >
+                    {addingCat ? "..." : "Add"}
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <input 
-                  className="flex-1 px-4 py-3.5 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-orange-300"
-                  placeholder="New Category..."
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                />
-                <button onClick={handleAddCategory} disabled={addingCat} className="bg-gray-900 text-white px-6 rounded-2xl font-bold hover:bg-black transition-colors">
-                  {addingCat ? "..." : "Add"}
+
+              {/* Add Item Button / Form */}
+              {!showItemForm ? (
+                <button
+                  onClick={() => setShowItemForm(true)}
+                  className="action-btn"
+                  style={{
+                    width: "100%", padding: "15px", borderRadius: 16,
+                    background: "#1a6b3a", color: "white", fontSize: 14, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    boxShadow: "0 4px 16px rgba(26,107,58,0.2)",
+                  }}
+                >
+                  <Plus size={18} /> Add New Dish
                 </button>
-              </div>
-            </div>
+              ) : (
+                <div style={{
+                  background: "white", borderRadius: 22, padding: "24px 26px",
+                  border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Dish Details</h3>
+                    <button onClick={() => setShowItemForm(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9dbeaa", display: "flex" }}>
+                      <X size={18} />
+                    </button>
+                  </div>
 
-            {/* Add Item Form */}
-            {!showItemForm ? (
-              <button 
-                onClick={() => setShowItemForm(true)}
-                className="w-full py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95"
-              >
-                <Plus size={20} /> Add New Dish
-              </button>
-            ) : (
-              <div className="bg-white border-2 border-orange-100 rounded-3xl p-6 shadow-sm">
-                <div className="flex justify-between mb-6">
-                  <h3 className="font-bold text-lg">Dish Details</h3>
-                  <button onClick={() => setShowItemForm(false)} className="text-gray-400 hover:text-gray-600"><X /></button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <input className="w-full px-4 py-3 bg-gray-50 border rounded-xl outline-none focus:border-orange-500" placeholder="Dish Name *" value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} />
-                  <input className="w-full px-4 py-3 bg-gray-50 border rounded-xl outline-none focus:border-orange-500" type="number" placeholder="Price (₹) *" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} />
-                </div>
-                <select className="w-full px-4 py-3 bg-gray-50 border rounded-xl outline-none mb-6" value={itemForm.category_id} onChange={e => setItemForm({...itemForm, category_id: e.target.value})}>
-                  <option value="">No Category</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <div className="flex gap-3">
-                  <button onClick={handleAddItem} disabled={savingItem} className="flex-1 bg-orange-500 text-white py-3.5 rounded-xl font-bold">Save Dish</button>
-                  <button onClick={() => setShowItemForm(false)} className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-bold">Cancel</button>
-                </div>
-              </div>
-            )}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                    <input
+                      className="input-field"
+                      placeholder="Dish Name *"
+                      value={itemForm.name}
+                      onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                      style={{ padding: "12px 14px", background: "#f8fbf9", border: "1.5px solid #dceee3", borderRadius: 12, color: "#111827" }}
+                    />
+                    <input
+                      className="input-field"
+                      type="number"
+                      placeholder="Price (₹) *"
+                      value={itemForm.price}
+                      onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+                      style={{ padding: "12px 14px", background: "#f8fbf9", border: "1.5px solid #dceee3", borderRadius: 12, color: "#111827" }}
+                    />
+                  </div>
 
-            {/* Menu List */}
-            <div className="space-y-8">
-              {Object.keys(grouped).map(catName => (
-                grouped[catName].length > 0 && (
-                  <div key={catName} className="animate-in fade-in duration-500">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="bg-orange-500 w-1.5 h-6 rounded-full" />
-                      <h3 className="font-bold text-gray-800 uppercase tracking-wider text-sm">{catName}</h3>
-                      <span className="text-gray-400 text-xs font-bold bg-gray-100 px-2 py-0.5 rounded-lg">{grouped[catName].length}</span>
+                  <select
+                    className="input-field"
+                    value={itemForm.category_id}
+                    onChange={(e) => setItemForm({ ...itemForm, category_id: e.target.value })}
+                    style={{
+                      width: "100%", padding: "12px 14px", marginBottom: 18,
+                      background: "#f8fbf9", border: "1.5px solid #dceee3",
+                      borderRadius: 12, color: "#111827",
+                    }}
+                  >
+                    <option value="">No Category</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      onClick={handleAddItem}
+                      disabled={savingItem}
+                      className="action-btn"
+                      style={{ flex: 1, padding: "13px", borderRadius: 12, background: "#1a6b3a", color: "white", fontSize: 14, fontWeight: 700, opacity: savingItem ? 0.6 : 1 }}
+                    >
+                      {savingItem ? "Saving..." : "Save Dish"}
+                    </button>
+                    <button
+                      onClick={() => setShowItemForm(false)}
+                      className="action-btn"
+                      style={{ flex: 1, padding: "13px", borderRadius: 12, background: "#f2f9f4", color: "#4a7a58", fontSize: 14, fontWeight: 700 }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Menu List ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 28, marginTop: 8 }}>
+                {Object.keys(grouped).map((catName) =>
+                  grouped[catName].length > 0 && (
+                    <div key={catName}>
+                      {/* Category header */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <div style={{ width: 4, height: 22, borderRadius: 999, background: "#1a6b3a" }} />
+                        <h3 style={{ fontSize: 11, fontWeight: 800, color: "#1a6b3a", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                          {catName}
+                        </h3>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, color: "#6aad7a",
+                          background: "#e6f4ec", padding: "2px 10px", borderRadius: 999,
+                          border: "1.5px solid #cde8d6",
+                        }}>
+                          {grouped[catName].length}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {grouped[catName].map((item) => (
+                          <MenuItemRow key={item.id} item={item} onToggle={() => toggleAvailability(item)} />
+                        ))}
+                      </div>
                     </div>
-                    <div className="grid gap-3">
-                      {grouped[catName].map(item => (
+                  )
+                )}
+
+                {uncategorized.length > 0 && (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <div style={{ width: 4, height: 22, borderRadius: 999, background: "#b8d8c4" }} />
+                      <h3 style={{ fontSize: 11, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                        Uncategorized
+                      </h3>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, color: "#9dbeaa",
+                        background: "#f2f9f4", padding: "2px 10px", borderRadius: 999,
+                        border: "1.5px solid #dceee3",
+                      }}>
+                        {uncategorized.length}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {uncategorized.map((item) => (
                         <MenuItemRow key={item.id} item={item} onToggle={() => toggleAvailability(item)} />
                       ))}
                     </div>
                   </div>
-                )
-              ))}
-
-              {/* Uncategorized Items */}
-              {uncategorized.length > 0 && (
-                <div className="mt-8">
-                   <div className="flex items-center gap-2 mb-4">
-                      <div className="bg-gray-400 w-1.5 h-6 rounded-full" />
-                      <h3 className="font-bold text-gray-500 uppercase tracking-wider text-sm">Uncategorized</h3>
-                    </div>
-                    <div className="grid gap-3">
-                      {uncategorized.map(item => (
-                        <MenuItemRow key={item.id} item={item} onToggle={() => toggleAvailability(item)} />
-                      ))}
-                    </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Footer Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-between items-center max-w-4xl mx-auto shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[2rem] z-10">
-          <button className="px-6 py-3 font-bold text-gray-500" onClick={() => router.push("/restaurant/onboarding/operations")}>Back</button>
-          <button 
-            className="bg-orange-500 text-white px-10 py-3 rounded-2xl font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-orange-100"
+        {/* ── Footer Nav ── */}
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 20,
+          background: "white", borderTop: "1.5px solid #dceee3",
+          padding: "14px 24px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          boxShadow: "0 -4px 20px rgba(0,0,0,0.05)",
+        }}>
+          <button
+            onClick={() => router.push("/restaurant/onboarding/operations")}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 14, fontWeight: 700, color: "#9dbeaa",
+              fontFamily: "'Inter', sans-serif", padding: "10px 18px",
+            }}
+          >
+            ← Back
+          </button>
+          <button
             onClick={() => {
               if (!items.length) return toast.error("Add at least one item");
               router.push("/restaurant/onboarding/order-settings");
+            }}
+            className="action-btn"
+            style={{
+              padding: "12px 36px", borderRadius: 14, fontSize: 14, fontWeight: 700,
+              background: "#1a6b3a", color: "white",
+              boxShadow: "0 4px 16px rgba(26,107,58,0.2)",
             }}
           >
             Continue →
           </button>
         </div>
-      </div>
-    </OnboardingLayout>
+      </OnboardingLayout>
+    </>
   );
 }
 
-// Sub-component for Menu Item Row
+// ── Menu Item Row sub-component ──
 function MenuItemRow({ item, onToggle }) {
   return (
-    <div className={`bg-white border rounded-2xl p-4 flex items-center justify-between transition-all ${!item.is_available ? 'opacity-60 bg-gray-50/50' : 'hover:border-orange-200 hover:shadow-sm'}`}>
-      <div className="flex-1">
-        <p className={`font-bold text-[15px] ${!item.is_available ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+    <div
+      className="item-row"
+      style={{
+        background: item.is_available ? "white" : "#fafaf9",
+        border: "1.5px solid #dceee3",
+        borderRadius: 16, padding: "14px 18px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        opacity: item.is_available ? 1 : 0.55,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 14, fontWeight: 700,
+          color: item.is_available ? "#111827" : "#9dbeaa",
+          textDecoration: item.is_available ? "none" : "line-through",
+          marginBottom: item.description ? 3 : 0,
+        }}>
           {item.name}
         </p>
-        {item.description && <p className="text-xs text-gray-400 mt-0.5 italic">{item.description}</p>}
+        {item.description && (
+          <p style={{ fontSize: 11, color: "#9dbeaa", fontStyle: "italic" }}>
+            {item.description}
+          </p>
+        )}
       </div>
-      <div className="flex items-center gap-6">
-        <span className="font-bold text-gray-900">₹{item.price}</span>
-        <button onClick={onToggle} className="text-gray-300 hover:text-orange-500 transition-colors">
-          {item.is_available ? <ToggleRight size={32} className="text-orange-500" /> : <ToggleLeft size={32} />}
+      <div style={{ display: "flex", alignItems: "center", gap: 20, flexShrink: 0 }}>
+        <span style={{ fontSize: 15, fontWeight: 800, color: "#1a2e1f" }}>
+          ₹{item.price}
+        </span>
+        <button className="toggle-btn" onClick={onToggle}>
+          {item.is_available
+            ? <ToggleRight size={30} color="#1a6b3a" />
+            : <ToggleLeft size={30} color="#b8d8c4" />}
         </button>
       </div>
     </div>
