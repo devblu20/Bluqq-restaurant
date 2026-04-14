@@ -3,7 +3,12 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
-import { getMe, getOrderSettings, updateOrderSettings } from "../../../services/api";
+import {
+  getMe,
+  getOrderSettings,
+  createOrderSettings,
+  updateOrderSettings,
+} from "../../../services/api";
 import {
   Loader2, CreditCard, IndianRupee, ReceiptText, Save, Check,
   UtensilsCrossed, ChevronLeft,
@@ -27,7 +32,8 @@ function Section({ title, icon: Icon, iconBg, children }) {
 /* ── Check Option ── */
 function CheckOption({ label, desc, name, register }) {
   return (
-    <label style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px", border: "1.5px solid #dceee3", borderRadius: 14, cursor: "pointer", background: "white", transition: "all 0.15s" }}
+    <label
+      style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px", border: "1.5px solid #dceee3", borderRadius: 14, cursor: "pointer", background: "white", transition: "all 0.15s" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "#1a6b3a"; e.currentTarget.style.background = "#f4faf6"; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = "#dceee3"; e.currentTarget.style.background = "white"; }}
     >
@@ -46,10 +52,20 @@ export default function EditOrderSettingsPage() {
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Track whether a settings record already exists in the backend.
+  // - null  = not yet determined (still loading)
+  // - false = no record (need POST to create)
+  // - true  = record exists (use PATCH to update)
+  const [settingsExist, setSettingsExist] = useState(null);
+
   const { register, handleSubmit, reset, formState: { isDirty } } = useForm({
     defaultValues: {
-      cash_on_delivery_enabled: true, upi_enabled: false, tax_included: false,
-      minimum_order_amount: 0, delivery_fee: 0, currency: "INR",
+      cash_on_delivery_enabled: true,
+      upi_enabled: false,
+      tax_included: false,
+      minimum_order_amount: 0,
+      delivery_fee: 0,
+      currency: "INR",
     },
   });
 
@@ -57,9 +73,22 @@ export default function EditOrderSettingsPage() {
     const token = localStorage.getItem("token");
     const id = localStorage.getItem("restaurant_id");
     if (!token || !id) { router.replace("/restaurant/login"); return; }
-    Promise.all([getMe(), getOrderSettings(id)])
-      .then(([meRes, settRes]) => {
-        if (settRes?.data) reset(settRes.data);
+
+    Promise.all([
+      getMe(),
+      // Gracefully handle 404 — it just means no settings row exists yet
+      getOrderSettings(id).catch((err) => {
+        if (err.response?.status === 404) return { data: null };
+        throw err; // re-throw anything else (500, network, etc.)
+      }),
+    ])
+      .then(([_meRes, settRes]) => {
+        if (settRes?.data) {
+          reset(settRes.data);
+          setSettingsExist(true);
+        } else {
+          setSettingsExist(false); // no record — will POST on first save
+        }
       })
       .catch(() => toast.error("Failed to load settings"))
       .finally(() => setFetching(false));
@@ -68,15 +97,25 @@ export default function EditOrderSettingsPage() {
   const onSubmit = async (data) => {
     setSaving(true);
     const id = localStorage.getItem("restaurant_id");
+
+    const payload = {
+      cash_on_delivery_enabled: !!data.cash_on_delivery_enabled,
+      upi_enabled: !!data.upi_enabled,
+      tax_included: !!data.tax_included,
+      minimum_order_amount: parseFloat(data.minimum_order_amount) || 0,
+      delivery_fee: parseFloat(data.delivery_fee) || 0,
+      currency: data.currency || "INR",
+    };
+
     try {
-      await updateOrderSettings(id, {
-        cash_on_delivery_enabled: !!data.cash_on_delivery_enabled,
-        upi_enabled: !!data.upi_enabled,
-        tax_included: !!data.tax_included,
-        minimum_order_amount: parseFloat(data.minimum_order_amount) || 0,
-        delivery_fee: parseFloat(data.delivery_fee) || 0,
-        currency: data.currency || "INR",
-      });
+      if (settingsExist) {
+        // Record already exists → PATCH
+        await updateOrderSettings(id, payload);
+      } else {
+        // First time → POST to create the record
+        await createOrderSettings(id, payload);
+        setSettingsExist(true); // subsequent saves should PATCH
+      }
       toast.success("Settings updated!");
       router.push("/restaurant/dashboard");
     } catch (err) {
@@ -126,7 +165,10 @@ export default function EditOrderSettingsPage() {
 
           {/* Header */}
           <div>
-            <button onClick={() => router.push("/restaurant/dashboard")} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}>
+            <button
+              onClick={() => router.push("/restaurant/dashboard")}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}
+            >
               <ChevronLeft size={15} /> Back to Dashboard
             </button>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Order Settings</h1>
@@ -183,7 +225,8 @@ export default function EditOrderSettingsPage() {
 
             {/* Save Button */}
             <button
-              type="submit" disabled={saving}
+              type="submit"
+              disabled={saving}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 padding: "16px", borderRadius: 16, background: "#1a6b3a", color: "white",
@@ -196,7 +239,7 @@ export default function EditOrderSettingsPage() {
             >
               {saving
                 ? <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Saving Changes...</>
-                : <><Save size={18} /> Update & Return to Dashboard</>
+                : <><Save size={18} /> {settingsExist ? "Update & Return to Dashboard" : "Save & Return to Dashboard"}</>
               }
             </button>
           </form>
@@ -213,14 +256,21 @@ export default function EditOrderSettingsPage() {
           animation: "slideUp 0.3s ease", zIndex: 99,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block", animation: "pulse 2s infinite" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
             <p style={{ fontSize: 13, fontWeight: 600 }}>You have unsaved changes</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => reset()} style={{ padding: "8px 14px", borderRadius: 10, background: "transparent", color: "#9ca3af", border: "1px solid #374151", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+            <button
+              onClick={() => reset()}
+              style={{ padding: "8px 14px", borderRadius: 10, background: "transparent", color: "#9ca3af", border: "1px solid #374151", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
+            >
               Discard
             </button>
-            <button onClick={handleSubmit(onSubmit)} disabled={saving} style={{ padding: "8px 18px", borderRadius: 10, background: "#1a6b3a", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "'Inter', sans-serif" }}>
+            <button
+              onClick={handleSubmit(onSubmit)}
+              disabled={saving}
+              style={{ padding: "8px 18px", borderRadius: 10, background: "#1a6b3a", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "'Inter', sans-serif" }}
+            >
               {saving ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={12} />}
               Save
             </button>
