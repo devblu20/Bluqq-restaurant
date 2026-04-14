@@ -4,109 +4,42 @@ import Head from "next/head";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import RestaurantLayout from "../../../components/OnboardingLayout";
-import {
-  Loader2, CreditCard, IndianRupee, ReceiptText,
-  Save, Check, ArrowLeft, UtensilsCrossed,
+import { 
+  Loader2, CreditCard, IndianRupee, ReceiptText, 
+  Save, Check, ArrowLeft 
 } from "lucide-react";
 import { getMe, getOrderSettings, updateOrderSettings } from "../../../services/api";
 
-/* ─── Design tokens ─────────────────────────────────────────────── */
-const T = {
-  primary:      "#1a6b3a",
-  primaryLight: "#e6f4ec",
-  primaryBorder:"#dceee3",
-  primaryHint:  "#9dbeaa",
-  primaryMuted: "#6aad7a",
-  pageBg:       "#eef5f0",
-  cardBg:       "white",
-  cardBorder:   "#dceee3",
-  divider:      "#edf6f0",
-  textMain:     "#111827",
-  textSub:      "#4a7a58",
-  textHint:     "#9dbeaa",
-  inputBg:      "#f9fafb",
-  inputBorder:  "#e5e7eb",
-};
+const inputCls = "w-full px-3.5 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition-all";
 
-/* ─── Shared styles ─────────────────────────────────────────────── */
-const inputStyle = {
-  width: "100%",
-  padding: "10px 14px",
-  fontSize: 13,
-  background: T.inputBg,
-  border: `1.5px solid ${T.inputBorder}`,
-  borderRadius: 12,
-  color: T.textMain,
-  outline: "none",
-  fontFamily: "'Inter', sans-serif",
-  transition: "border-color 0.15s",
-};
-
-const inputPrefixedStyle = { ...inputStyle, paddingLeft: 30 };
-
-const labelStyle = {
-  fontSize: 10,
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.1em",
-  color: T.textHint,
-  display: "block",
-  marginBottom: 6,
-};
-
-/* ─── Section card ──────────────────────────────────────────────── */
 function Section({ title, icon: Icon, children }) {
   return (
-    <div style={{
-      background: T.cardBg,
-      borderRadius: 22,
-      padding: 26,
-      border: `1.5px solid ${T.cardBorder}`,
-      boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        marginBottom: 20, paddingBottom: 16,
-        borderBottom: `1.5px solid ${T.divider}`,
-      }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 10,
-          background: T.primaryLight, border: `1.5px solid ${T.primaryBorder}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-        }}>
-          <Icon size={17} color={T.primary} />
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-2.5 mb-5 pb-4 border-b border-gray-50">
+        <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+          <Icon size={15} className="text-orange-500" />
         </div>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: T.textMain }}>{title}</h3>
+        <h2 style={{ fontFamily: "'Syne', sans-serif" }} className="text-sm font-semibold text-gray-900">
+          {title}
+        </h2>
       </div>
       {children}
     </div>
   );
 }
 
-/* ─── CheckOption ───────────────────────────────────────────────── */
 function CheckOption({ label, desc, name, register }) {
   return (
-    <label style={{
-      display: "flex", alignItems: "flex-start", gap: 12,
-      padding: "13px 15px", borderRadius: 14, cursor: "pointer",
-      background: T.primaryLight, border: `1.5px solid ${T.primaryBorder}`,
-      transition: "box-shadow 0.15s",
-    }}>
-      <input
-        type="checkbox"
-        style={{ accentColor: T.primary, width: 16, height: 16, marginTop: 2, flexShrink: 0 }}
-        {...register(name)}
-      />
+    <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer hover:border-orange-300 hover:bg-orange-50 transition has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50/50 has-[:checked]:ring-1 has-[:checked]:ring-orange-500">
+      <input type="checkbox" className="accent-orange-600 w-4 h-4 mt-0.5 rounded" {...register(name)} />
       <div>
-        <p style={{ fontSize: 13, fontWeight: 700, color: T.textMain }}>{label}</p>
-        <p style={{ fontSize: 11, color: T.textHint, marginTop: 2 }}>{desc}</p>
+        <p className="text-sm font-bold text-gray-800">{label}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
       </div>
     </label>
   );
 }
 
-/* ─── Main page ─────────────────────────────────────────────────── */
 export default function EditOrderSettingsPage() {
   const router = useRouter();
   const [restaurant, setRestaurant] = useState(null);
@@ -126,8 +59,12 @@ export default function EditOrderSettingsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const id    = localStorage.getItem("restaurant_id");
-    if (!token || !id) { router.replace("/restaurant/login"); return; }
+    const id = localStorage.getItem("restaurant_id");
+
+    if (!token || !id) {
+      router.replace("/restaurant/login");
+      return;
+    }
 
     Promise.all([getMe(), getOrderSettings(id)])
       .then(([meRes, settRes]) => {
@@ -147,14 +84,18 @@ export default function EditOrderSettingsPage() {
     try {
       await updateOrderSettings(id, {
         cash_on_delivery_enabled: !!data.cash_on_delivery_enabled,
-        upi_enabled:              !!data.upi_enabled,
-        tax_included:             !!data.tax_included,
-        minimum_order_amount:     parseFloat(data.minimum_order_amount) || 0,
-        delivery_fee:             parseFloat(data.delivery_fee)         || 0,
-        currency:                 data.currency || "INR",
+        upi_enabled: !!data.upi_enabled,
+        tax_included: !!data.tax_included,
+        minimum_order_amount: parseFloat(data.minimum_order_amount) || 0,
+        delivery_fee: parseFloat(data.delivery_fee) || 0,
+        currency: data.currency || "INR",
       });
+      
       toast.success("Settings updated!");
-      router.push("/restaurant/dashboard");
+      
+      // Update ke baad dashboard par wapas bhejne ke liye
+      router.push("/restaurant/dashboard"); 
+      
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to save");
     } finally {
@@ -167,244 +108,113 @@ export default function EditOrderSettingsPage() {
     router.push("/restaurant/login");
   };
 
-  /* Loading state */
   if (fetching) return (
-    <div style={{
-      minHeight: "100vh", background: T.pageBg,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: 14, background: T.primary,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <UtensilsCrossed size={22} color="white" />
-        </div>
-        <Loader2 size={24} color={T.primary} style={{ animation: "spin 1s linear infinite" }} />
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <Loader2 className="animate-spin text-orange-500" size={32} />
     </div>
   );
 
   return (
     <>
       <Head>
-        <title>Order Settings | Menuify</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-        <style>{`
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { background: ${T.pageBg}; font-family: 'Inter', sans-serif; }
-          @keyframes spin  { to { transform: rotate(360deg); } }
-          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
-          @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-          .check-option:hover { box-shadow: 0 0 0 3px ${T.primaryBorder}; }
-          .save-btn:hover:not(:disabled) { background: #155c30 !important; }
-          .back-btn:hover { color: ${T.primary} !important; }
-          .input-field:focus { border-color: ${T.primary} !important; box-shadow: 0 0 0 3px ${T.primaryLight}; }
-          .select-field:focus { border-color: ${T.primary} !important; box-shadow: 0 0 0 3px ${T.primaryLight}; }
-          ::-webkit-scrollbar { width: 4px; }
-          ::-webkit-scrollbar-thumb { background: #b8d8c4; border-radius: 4px; }
-        `}</style>
+        <title>Order Settings | Dashboard</title>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@700&display=swap" rel="stylesheet" />
       </Head>
 
       <RestaurantLayout restaurant={restaurant} onLogout={handleLogout}>
-        <div style={{ minHeight: "100vh", background: T.pageBg, fontFamily: "'Inter', sans-serif" }}>
-          <main style={{ maxWidth: 720, margin: "0 auto", padding: "32px 32px 100px" }}>
+        <main className="max-w-3xl mx-auto px-7 py-8 mb-24">
+          
+          {/* Back Button and Header */}
+          <div className="mb-8">
+            <button 
+              onClick={() => router.push("/restaurant/dashboard")}
+              className="flex items-center gap-2 text-gray-500 hover:text-orange-500 transition-colors mb-4 text-sm font-medium"
+            >
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </button>
+            <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="text-2xl font-bold text-gray-900">Order Settings</h1>
+            <p className="text-sm text-gray-500">Configure how you accept payments and handle taxes</p>
+          </div>
 
-            {/* ── Page header ── */}
-            <div style={{ marginBottom: 32 }}>
-              <button
-                onClick={() => router.push("/restaurant/dashboard")}
-                className="back-btn"
-                style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  fontSize: 13, fontWeight: 600, color: T.textHint,
-                  background: "none", border: "none", cursor: "pointer",
-                  marginBottom: 16, fontFamily: "'Inter', sans-serif",
-                  transition: "color 0.15s",
-                }}
-              >
-                <ArrowLeft size={15} />
-                Back to Dashboard
-              </button>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <Section title="Payment methods" icon={CreditCard}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CheckOption label="Cash on delivery" desc="Accept cash at your doorstep"
+                  name="cash_on_delivery_enabled" register={register} />
+                <CheckOption label="UPI / Manual transfer" desc="Accept GPay, PhonePe, Paytm"
+                  name="upi_enabled" register={register} />
+              </div>
+            </Section>
+
+            <Section title="Tax settings" icon={ReceiptText}>
+              <CheckOption label="Prices are tax-inclusive" desc="GST is already included in menu prices"
+                name="tax_included" register={register} />
+            </Section>
+
+            <Section title="Fees & Minimums" icon={IndianRupee}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <h1 style={{ fontSize: 28, fontWeight: 800, color: T.textMain, letterSpacing: "-0.02em", marginBottom: 4 }}>
-                    Order Settings
-                  </h1>
-                  <p style={{ fontSize: 13, color: T.primaryMuted, fontWeight: 500 }}>
-                    Configure how you accept payments and handle taxes
-                  </p>
+                  <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1.5 block">Min. Order Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                    <input className={inputCls} type="number" min={0}
+                      placeholder="0" {...register("minimum_order_amount")} />
+                  </div>
                 </div>
-                <div style={{
-                  padding: "6px 14px", borderRadius: 999, background: "white",
-                  border: `1.5px solid ${T.primaryBorder}`,
-                  fontSize: 11, fontWeight: 700, color: T.primary,
-                }}>
-                  ⚙ Settings
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1.5 block">Delivery Fee</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                    <input className={inputCls} type="number" min={0} step="0.50"
+                      placeholder="0" {...register("delivery_fee")} />
+                  </div>
                 </div>
               </div>
-            </div>
+            </Section>
 
-            {/* ── Form ── */}
-            <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
-              {/* Payment methods */}
-              <Section title="Payment methods" icon={CreditCard}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <CheckOption
-                    label="Cash on delivery"
-                    desc="Accept cash at your doorstep"
-                    name="cash_on_delivery_enabled"
-                    register={register}
-                  />
-                  <CheckOption
-                    label="UPI / Manual transfer"
-                    desc="Accept GPay, PhonePe, Paytm"
-                    name="upi_enabled"
-                    register={register}
-                  />
-                </div>
-              </Section>
-
-              {/* Tax settings */}
-              <Section title="Tax settings" icon={ReceiptText}>
-                <CheckOption
-                  label="Prices are tax-inclusive"
-                  desc="GST is already included in menu prices"
-                  name="tax_included"
-                  register={register}
-                />
-              </Section>
-
-              {/* Fees & Minimums */}
-              <Section title="Fees & Minimums" icon={IndianRupee}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Min. Order Amount</label>
-                    <div style={{ position: "relative" }}>
-                      <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: T.textHint }}>₹</span>
-                      <input
-                        className="input-field"
-                        style={inputPrefixedStyle}
-                        type="number"
-                        min={0}
-                        placeholder="0"
-                        {...register("minimum_order_amount")}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Delivery Fee</label>
-                    <div style={{ position: "relative" }}>
-                      <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: T.textHint }}>₹</span>
-                      <input
-                        className="input-field"
-                        style={inputPrefixedStyle}
-                        type="number"
-                        min={0}
-                        step="0.50"
-                        placeholder="0"
-                        {...register("delivery_fee")}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </Section>
-
-              {/* Currency */}
-              <Section title="Currency" icon={IndianRupee}>
-                <label style={labelStyle}>Display Currency</label>
-                <select
-                  className="select-field"
-                  style={{ ...inputStyle, cursor: "pointer" }}
-                  {...register("currency")}
-                >
+            <Section title="Currency" icon={IndianRupee}>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1.5 block">Display Currency</label>
+                <select className={inputCls} {...register("currency")}>
                   <option value="INR">INR — Indian Rupee (₹)</option>
                   <option value="USD">USD — US Dollar ($)</option>
                   <option value="AED">AED — UAE Dirham</option>
                   <option value="GBP">GBP — British Pound (£)</option>
                 </select>
-              </Section>
-
-              {/* Submit button */}
-              <div style={{ paddingTop: 6 }}>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="save-btn"
-                  style={{
-                    width: "100%",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-                    padding: "15px 28px",
-                    background: T.primary, color: "white",
-                    fontSize: 14, fontWeight: 700,
-                    borderRadius: 16, border: "none", cursor: saving ? "not-allowed" : "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    boxShadow: "0 8px 24px rgba(26,107,58,0.25)",
-                    opacity: saving ? 0.7 : 1,
-                    transition: "background 0.15s, opacity 0.15s",
-                  }}
-                >
-                  {saving
-                    ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-                    : <Save size={18} />}
-                  {saving ? "Saving Changes…" : "Update & Return"}
-                </button>
               </div>
+            </Section>
 
-            </form>
-          </main>
-        </div>
-
-        {/* ── Floating unsaved-changes bar ── */}
-        {isDirty && (
-          <div style={{
-            position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-            width: "90%", maxWidth: 560,
-            background: "#111827", color: "white",
-            padding: "14px 18px", borderRadius: 18,
-            boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            animation: "slideUp 0.25s ease",
-            zIndex: 100,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: "50%", background: "#22c55e",
-                display: "inline-block", animation: "pulse 2s infinite",
-              }} />
-              <p style={{ fontSize: 13, fontWeight: 500 }}>Unsaved changes detected</p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => reset()}
-                style={{
-                  padding: "7px 14px", fontSize: 12, fontWeight: 700,
-                  color: "#9ca3af", background: "none", border: "none",
-                  cursor: "pointer", fontFamily: "'Inter', sans-serif",
-                }}
+            <div className="pt-4">
+               <button 
+                type="submit" 
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-orange-500 text-white font-bold rounded-2xl hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 disabled:opacity-70"
               >
-                Discard
+                {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                {saving ? "Saving Changes..." : "Update & Return"}
               </button>
-              <button
+            </div>
+
+          </form>
+        </main>
+
+        {/* Floating Bar for Quick Save */}
+        {isDirty && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-xl bg-gray-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom-10">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+              <p className="text-sm font-medium">Unsaved changes detected</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => reset()} className="px-4 py-2 text-xs font-bold hover:text-gray-300">Discard</button>
+              <button 
                 onClick={handleSubmit(onSubmit)}
                 disabled={saving}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "7px 18px", fontSize: 12, fontWeight: 700,
-                  background: T.primary, color: "white",
-                  borderRadius: 10, border: "none", cursor: "pointer",
-                  fontFamily: "'Inter', sans-serif",
-                }}
+                className="px-6 py-2 bg-orange-500 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-orange-600"
               >
-                {saving
-                  ? <Loader2 size={11} style={{ animation: "spin 1s linear infinite" }} />
-                  : <Check size={11} />}
+                {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 Save & Go
               </button>
             </div>
