@@ -1,97 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import Link from "next/link";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { getMe, getOrderSettings, updateOrderSettings } from "../../../services/api";
 import {
   Loader2, CreditCard, IndianRupee, ReceiptText, Save, Check,
-  UtensilsCrossed, LayoutGrid, BookOpen, ShoppingBag, BarChart2,
-  Settings, User, LogOut, ChevronLeft, Zap
+  UtensilsCrossed, ChevronLeft,
 } from "lucide-react";
-
-/* ── Sidebar ── */
-const NAV_MAIN = [
-  { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
-  { label: "Menu",      icon: BookOpen,   href: "/restaurant/edit/menu" },
-  { label: "Orders",    icon: ShoppingBag,href: "/restaurant/orders" },
-  { label: "Analytics", icon: BarChart2,  href: "/restaurant/analytics" },
-];
-const NAV_SETTINGS = [
-  { label: "Settings", icon: Settings, href: "/restaurant/edit/order-settings" },
-  { label: "Profile",  icon: User,     href: "/restaurant/edit/basic-info" },
-];
-
-function Sidebar({ restaurant, onLogout, currentPath }) {
-  const ownerInitials = restaurant?.owner_name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "R";
-  return (
-    <aside style={{
-      position: "fixed", top: 0, left: 0, bottom: 0, width: 260,
-      background: "#ffffff", borderRight: "1.5px solid #dceee3",
-      display: "flex", flexDirection: "column", zIndex: 20,
-    }}>
-      <div style={{ padding: "22px 22px 18px", borderBottom: "1.5px solid #edf6f0", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <UtensilsCrossed size={18} color="white" />
-        </div>
-        <div>
-          <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>Menuify</p>
-          <p style={{ fontSize: 9, fontWeight: 700, color: "#6aad7a", textTransform: "uppercase", letterSpacing: "0.14em" }}>Restaurant OS</p>
-        </div>
-      </div>
-      <nav style={{ flex: 1, padding: "20px 14px", overflowY: "auto" }}>
-        <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Navigation</p>
-        {NAV_MAIN.map((item) => {
-          const active = currentPath === item.href;
-          return (
-            <Link key={item.label} href={item.href} style={{
-              textDecoration: "none", display: "flex", alignItems: "center", gap: 11, width: "100%",
-              padding: "11px 12px", borderRadius: 12, fontSize: 14, fontWeight: active ? 700 : 500,
-              color: active ? "#1a6b3a" : "#4a7a58", background: active ? "#e6f4ec" : "transparent",
-              marginBottom: 3, transition: "background 0.15s",
-            }}>
-              <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {active && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
-            </Link>
-          );
-        })}
-        <div style={{ borderTop: "1.5px solid #edf6f0", margin: "16px 0 14px" }} />
-        <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Settings</p>
-        {NAV_SETTINGS.map((item) => {
-          const active = currentPath === item.href;
-          return (
-            <Link key={item.label} href={item.href} style={{
-              textDecoration: "none", display: "flex", alignItems: "center", gap: 11, width: "100%",
-              padding: "11px 12px", borderRadius: 12, fontSize: 14, fontWeight: active ? 700 : 500,
-              color: active ? "#1a6b3a" : "#4a7a58", background: active ? "#e6f4ec" : "transparent",
-              marginBottom: 3, transition: "background 0.15s",
-            }}>
-              <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {active && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
-            </Link>
-          );
-        })}
-      </nav>
-      <div style={{ padding: "14px 14px 18px", borderTop: "1.5px solid #edf6f0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#f2f9f4", marginBottom: 6 }}>
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-            {ownerInitials}
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#1a2e1f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{restaurant?.owner_name}</p>
-            <p style={{ fontSize: 11, color: "#9dbeaa", textTransform: "capitalize" }}>{restaurant?.business_type?.replace("_", " ")}</p>
-          </div>
-        </div>
-        <button onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 12px", borderRadius: 12, fontSize: 13, color: "#9dbeaa", background: "transparent", border: "none", fontWeight: 500, fontFamily: "'Inter', sans-serif", cursor: "pointer" }}>
-          <LogOut size={15} /> Sign out
-        </button>
-      </div>
-    </aside>
-  );
-}
 
 /* ── Section Card ── */
 function Section({ title, icon: Icon, iconBg, children }) {
@@ -127,7 +43,6 @@ function CheckOption({ label, desc, name, register }) {
 /* ── Main Page ── */
 export default function EditOrderSettingsPage() {
   const router = useRouter();
-  const [restaurant, setRestaurant] = useState(null);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -144,7 +59,6 @@ export default function EditOrderSettingsPage() {
     if (!token || !id) { router.replace("/restaurant/login"); return; }
     Promise.all([getMe(), getOrderSettings(id)])
       .then(([meRes, settRes]) => {
-        setRestaurant(meRes.data);
         if (settRes?.data) reset(settRes.data);
       })
       .catch(() => toast.error("Failed to load settings"))
@@ -207,90 +121,86 @@ export default function EditOrderSettingsPage() {
         `}</style>
       </Head>
 
-      <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#eef5f0", display: "flex" }}>
-        <Sidebar restaurant={restaurant} onLogout={() => { localStorage.clear(); router.push("/restaurant/login"); }} currentPath="/restaurant/edit/order-settings" />
+      <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#eef5f0" }}>
+        <main style={{ maxWidth: 760, margin: "0 auto", padding: "32px 32px 80px", display: "flex", flexDirection: "column", gap: 22 }}>
 
-        <div style={{ marginLeft: 260, flex: 1, minWidth: 0 }}>
-          <main style={{ maxWidth: 760, margin: "0 auto", padding: "32px 32px 80px", display: "flex", flexDirection: "column", gap: 22 }}>
+          {/* Header */}
+          <div>
+            <button onClick={() => router.push("/restaurant/dashboard")} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}>
+              <ChevronLeft size={15} /> Back to Dashboard
+            </button>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Order Settings</h1>
+            <p style={{ fontSize: 13, color: "#6aad7a", marginTop: 4, fontWeight: 500 }}>Configure payments, taxes and delivery fees</p>
+          </div>
 
-            {/* Header */}
-            <div>
-              <button onClick={() => router.push("/restaurant/dashboard")} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}>
-                <ChevronLeft size={15} /> Back to Dashboard
-              </button>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Order Settings</h1>
-              <p style={{ fontSize: 13, color: "#6aad7a", marginTop: 4, fontWeight: 500 }}>Configure payments, taxes and delivery fees</p>
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
-            <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {/* Payment Methods */}
+            <Section title="Payment Methods" icon={CreditCard}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <CheckOption label="Cash on Delivery" desc="Accept cash at doorstep" name="cash_on_delivery_enabled" register={register} />
+                <CheckOption label="UPI / Transfer" desc="GPay, PhonePe, Paytm" name="upi_enabled" register={register} />
+              </div>
+            </Section>
 
-              {/* Payment Methods */}
-              <Section title="Payment Methods" icon={CreditCard}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <CheckOption label="Cash on Delivery" desc="Accept cash at doorstep" name="cash_on_delivery_enabled" register={register} />
-                  <CheckOption label="UPI / Transfer" desc="GPay, PhonePe, Paytm" name="upi_enabled" register={register} />
-                </div>
-              </Section>
+            {/* Tax */}
+            <Section title="Tax Settings" icon={ReceiptText}>
+              <CheckOption label="Prices are tax-inclusive" desc="GST is already included in menu prices" name="tax_included" register={register} />
+            </Section>
 
-              {/* Tax */}
-              <Section title="Tax Settings" icon={ReceiptText}>
-                <CheckOption label="Prices are tax-inclusive" desc="GST is already included in menu prices" name="tax_included" register={register} />
-              </Section>
-
-              {/* Fees */}
-              <Section title="Fees & Minimums" icon={IndianRupee}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Min. Order Amount</label>
-                    <div style={{ position: "relative" }}>
-                      <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#9dbeaa", fontWeight: 700 }}>₹</span>
-                      <input style={{ ...inputStyle, paddingLeft: 30 }} type="number" min={0} placeholder="0" {...register("minimum_order_amount")} />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Delivery Fee</label>
-                    <div style={{ position: "relative" }}>
-                      <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#9dbeaa", fontWeight: 700 }}>₹</span>
-                      <input style={{ ...inputStyle, paddingLeft: 30 }} type="number" min={0} step="0.50" placeholder="0" {...register("delivery_fee")} />
-                    </div>
-                  </div>
-                </div>
-              </Section>
-
-              {/* Currency */}
-              <Section title="Display Currency" icon={IndianRupee}>
+            {/* Fees */}
+            <Section title="Fees & Minimums" icon={IndianRupee}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
-                  <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Currency</label>
-                  <select style={inputStyle} {...register("currency")}>
-                    <option value="INR">INR — Indian Rupee (₹)</option>
-                    <option value="USD">USD — US Dollar ($)</option>
-                    <option value="AED">AED — UAE Dirham</option>
-                    <option value="GBP">GBP — British Pound (£)</option>
-                  </select>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Min. Order Amount</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#9dbeaa", fontWeight: 700 }}>₹</span>
+                    <input style={{ ...inputStyle, paddingLeft: 30 }} type="number" min={0} placeholder="0" {...register("minimum_order_amount")} />
+                  </div>
                 </div>
-              </Section>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Delivery Fee</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#9dbeaa", fontWeight: 700 }}>₹</span>
+                    <input style={{ ...inputStyle, paddingLeft: 30 }} type="number" min={0} step="0.50" placeholder="0" {...register("delivery_fee")} />
+                  </div>
+                </div>
+              </div>
+            </Section>
 
-              {/* Save Button */}
-              <button
-                type="submit" disabled={saving}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                  padding: "16px", borderRadius: 16, background: "#1a6b3a", color: "white",
-                  fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer",
-                  boxShadow: "0 8px 24px rgba(26,107,58,0.3)", transition: "transform 0.15s, opacity 0.15s",
-                  opacity: saving ? 0.7 : 1,
-                }}
-                onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-              >
-                {saving
-                  ? <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Saving Changes...</>
-                  : <><Save size={18} /> Update & Return to Dashboard</>
-                }
-              </button>
-            </form>
-          </main>
-        </div>
+            {/* Currency */}
+            <Section title="Display Currency" icon={IndianRupee}>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 8, display: "block" }}>Currency</label>
+                <select style={inputStyle} {...register("currency")}>
+                  <option value="INR">INR — Indian Rupee (₹)</option>
+                  <option value="USD">USD — US Dollar ($)</option>
+                  <option value="AED">AED — UAE Dirham</option>
+                  <option value="GBP">GBP — British Pound (£)</option>
+                </select>
+              </div>
+            </Section>
+
+            {/* Save Button */}
+            <button
+              type="submit" disabled={saving}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                padding: "16px", borderRadius: 16, background: "#1a6b3a", color: "white",
+                fontWeight: 800, fontSize: 15, border: "none", cursor: "pointer",
+                boxShadow: "0 8px 24px rgba(26,107,58,0.3)", transition: "transform 0.15s, opacity 0.15s",
+                opacity: saving ? 0.7 : 1,
+              }}
+              onMouseEnter={e => { if (!saving) e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+            >
+              {saving
+                ? <><Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> Saving Changes...</>
+                : <><Save size={18} /> Update & Return to Dashboard</>
+              }
+            </button>
+          </form>
+        </main>
       </div>
 
       {/* Floating Unsaved Changes Bar */}
