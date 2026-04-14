@@ -15,7 +15,7 @@ import {
 const NAV_MAIN = [
   { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
   { label: "Menu",      icon: BookOpen,   href: "/restaurant/edit/menu" },
-  { label: "Orders",    icon: ShoppingBag,href: "/restaurant/orders" },
+  { label: "Orders",    icon: ShoppingBag,href: "/restaurant/order-settings" },
   { label: "Analytics", icon: BarChart2,  href: "/restaurant/analytics" },
 ];
 
