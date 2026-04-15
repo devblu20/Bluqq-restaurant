@@ -324,6 +324,12 @@ export default function EditMenuPage() {
 
           {/* Header */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <button
+              onClick={() => router.push("/restaurant/dashboard")}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}
+            >
+              <ChevronLeft size={15} /> Back to Dashboard
+            </button>
             <div>
               <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Menu Management</h1>
               <p style={{ fontSize: 13, color: "#6aad7a", marginTop: 4, fontWeight: 500 }}>
