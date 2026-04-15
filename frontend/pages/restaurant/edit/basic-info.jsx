@@ -184,6 +184,12 @@ export default function EditBasicInfoPage() {
               <div style={{ width: 38, height: 38, borderRadius: 10, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Store size={18} color="white" />
               </div>
+              <button
+              onClick={() => router.push("/restaurant/dashboard")}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}
+            >
+              <ChevronLeft size={15} /> Back to Dashboard
+            </button>
               <h1 style={{ fontSize: 26, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
                 Restaurant Identity
               </h1>
