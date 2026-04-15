@@ -20,7 +20,7 @@ const NAV_MAIN = [
 ];
 
 const NAV_SETTINGS = [
-  { label: "Settings", icon: Settings, href: "/restaurant/edit/order-settings" },
+  { label: "Settings", icon: Settings, href: "/restaurant/orders" },
   { label: "Profile",  icon: User,     href: "/restaurant/edit/basic-info" },
 ];
 
