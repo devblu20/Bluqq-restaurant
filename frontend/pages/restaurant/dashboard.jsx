@@ -15,12 +15,12 @@ import {
 const NAV_MAIN = [
   { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
   { label: "Menu",      icon: BookOpen,   href: "/restaurant/edit/menu" },
-  { label: "Orders",    icon: ShoppingBag,href: "/restaurant/edit/order-settings" },
+  { label: "Orders",    icon: ShoppingBag,href: "/restaurant/orders" },
   { label: "Analytics", icon: BarChart2,  href: "/restaurant/analytics" },
 ];
 
 const NAV_SETTINGS = [
-  { label: "Settings", icon: Settings, href: "/restaurant/orders" },
+  { label: "Settings", icon: Settings, href: "/restaurant/edit/order-settings" },
   { label: "Profile",  icon: User,     href: "/restaurant/edit/basic-info" },
 ];
 
