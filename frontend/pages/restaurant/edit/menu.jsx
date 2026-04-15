@@ -9,7 +9,7 @@ import {
 import {
   Loader2, Plus, PenLine, X, Search, ChefHat, ImageIcon,
   ToggleLeft, ToggleRight, FolderPlus, Save, Upload, Sparkles,
-  Trash2, UtensilsCrossed, Tag,
+  Trash2, UtensilsCrossed, Tag, ChevronLeft,
 } from "lucide-react";
 
 /* ── AI Scanner ── */

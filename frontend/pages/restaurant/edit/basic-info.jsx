@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import RestaurantLayout from "../../../components/OnboardingLayout";
 import { getMe, getRestaurant, updateRestaurant } from "../../../services/api";
-import { Loader2, Store, MapPin, Phone, Mail, Save, UtensilsCrossed } from "lucide-react";
+import { Loader2, Store, MapPin, Phone, Mail, Save, UtensilsCrossed, ChevronLeft } from "lucide-react";
 
 const BUSINESS_TYPES = [
   { value: "dine_in",  label: "Dine-In",  emoji: "🍽️" },

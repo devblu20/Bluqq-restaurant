@@ -46,6 +46,10 @@ export const updateRestaurant = (id, data) => api.patch(`/restaurants/${id}`, da
 export const createProfile = (id, data) => api.post(`/restaurants/${id}/profile`, data);
 export const updateProfile = (id, data) => api.patch(`/restaurants/${id}/profile`, data);
 
+// Aliases for operations.jsx compatibility
+export const getRestaurantProfile = (id) => api.get(`/restaurants/${id}/profile`);
+export const updateRestaurantProfile = (id, data) => api.patch(`/restaurants/${id}/profile`, data);
+
 export const getOrderSettings = (id) => api.get(`/restaurants/${id}/order-settings`);
 export const createOrderSettings = (id, data) => api.post(`/restaurants/${id}/order-settings`, data);
 export const updateOrderSettings = (id, data) => api.patch(`/restaurants/${id}/order-settings`, data);
