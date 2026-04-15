@@ -1,4 +1,3 @@
-javascriptreact
 import { Check } from "lucide-react";
 
 const STEPS = [
@@ -97,4 +96,3 @@ export default function OnboardingStepper({ currentStep }) {
     </div>
   );
 }
-
