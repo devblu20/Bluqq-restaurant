@@ -1,10 +1,11 @@
+javascriptreact
 import { Check } from "lucide-react";
 
 const STEPS = [
   { key: "basic-info", label: "Basic Info" },
   { key: "operations", label: "Operations" },
-  { key: "menu", label: "Menu" },
   { key: "order-settings", label: "Settings" },
+  { key: "menu", label: "Menu" },
 ];
 
 export default function OnboardingStepper({ currentStep }) {
@@ -96,3 +97,4 @@ export default function OnboardingStepper({ currentStep }) {
     </div>
   );
 }
+
