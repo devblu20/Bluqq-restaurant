@@ -1,10 +1,7 @@
 import { useState, useRef } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { menuAPI } from "@/services/api";
 import styles from "./MenuUploadCard.module.css";
-
-const scannerAxios = axios.create({ baseURL: "http://localhost:8001" });
 
 // ── Tag badge ────────────────────────────────────────────────────────
 function TagBadge({ tag }) {
@@ -100,11 +97,11 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
       ["image/jpeg", "image/png", "image/webp"].includes(f.type)
     );
     if (valid.length === 0) {
-      toast.error("Sirf JPG, PNG, ya WebP images allowed hain");
+      toast.error("Only JPG, PNG, or WebP images are allowed");
       return;
     }
     if (valid.length > 10) {
-      toast.error("Maximum 10 images ek baar mein");
+      toast.error("Maximum 10 images at a time");
       return;
     }
     setFiles(valid);
@@ -116,10 +113,10 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
     handleFiles(e.dataTransfer.files);
   };
 
-  // ── Scan karo ─────────────────────────────────────────────────────
+  // ── Scan ──────────────────────────────────────────────────────────
   const handleScan = async () => {
     if (files.length === 0) {
-      toast.error("Pehle ek image select karo");
+      toast.error("Please select an image first");
       return;
     }
 
@@ -129,21 +126,16 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
     files.forEach((f) => formData.append("files", f));
 
     try {
-      const { data } = await scannerAxios.post("/scan", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await menuAPI.scanMenu(formData);
 
       setScanResult(data);
       setItems(data.items || []);
       setStep("review");
 
-      toast.success(`${data.total} items scan hue! Review karo phir import karo.`);
+      toast.success(`${data.total} items scanned! Review and import.`);
     } catch (err) {
       console.error(err);
-      toast.error(
-        err.response?.data?.detail ||
-        "Scan fail hua. MenuScanner service chal rahi hai? (port 8001)"
-      );
+      toast.error(err.response?.data?.detail || "Scan failed. Please try again.");
       setStep("upload");
     }
   };
@@ -159,13 +151,13 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
 
   const handleRemove = (index) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
-    toast.success("Item remove ho gaya");
+    toast.success("Item removed");
   };
 
-  // ── Backend mein import karo ──────────────────────────────────────
+  // ── Import to backend ─────────────────────────────────────────────
   const handleImport = async () => {
     if (items.length === 0) {
-      toast.error("Koi item nahi hai import karne ke liye");
+      toast.error("No items to import");
       return;
     }
 
@@ -180,16 +172,15 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
     };
 
     try {
-      const token = localStorage.getItem("token");
       const { data } = await menuAPI.importScan(restaurantId, payload);
 
       setStep("done");
-      toast.success(`${data.imported_items} items import ho gaye!`);
+      toast.success(`${data.imported_items} items imported successfully!`);
 
       if (onImportDone) onImportDone(data);
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.detail || "Import fail hua");
+      toast.error(err.response?.data?.detail || "Import failed. Please try again.");
       setStep("review");
     }
   };
@@ -217,10 +208,10 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
   if (step === "upload") {
     return (
       <div className={styles.wrap}>
-        <h3 className={styles.heading}>Menu scan karo — image se automatic items</h3>
+        <h3 className={styles.heading}>Scan your menu — auto-detect items from a photo</h3>
         <p className={styles.sub}>
-          Menu ki photo upload karo. AI usse scan karke saare items, prices aur categories
-          automatically detect kar lega.
+          Upload a photo of your menu. AI will scan it and automatically detect all
+          items, prices, and categories.
         </p>
 
         <div
@@ -234,7 +225,7 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
           <p className={styles.dropText}>
             {files.length > 0
               ? `${files.length} image${files.length > 1 ? "s" : ""} selected`
-              : "Click karo ya drag & drop karo"}
+              : "Click or drag & drop"}
           </p>
           <p className={styles.dropSub}>JPG, PNG, WebP — max 10 pages</p>
           <input
@@ -266,7 +257,7 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
           onClick={handleScan}
           disabled={files.length === 0}
         >
-          Scan karo →
+          Scan →
         </button>
       </div>
     );
@@ -278,13 +269,12 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
       <div className={styles.wrap}>
         <div className={styles.scanningWrap}>
           <div className={styles.spinner} />
-          <h3 className={styles.scanningText}>Menu scan ho raha hai…</h3>
+          <h3 className={styles.scanningText}>Scanning your menu…</h3>
           <p className={styles.scanningSubtext}>
-            {files.length} image{files.length > 1 ? "s" : ""} process ho rahi hai.
-            Ek minute lag sakta hai.
+            Processing {files.length} image{files.length > 1 ? "s" : ""}. This may take a moment.
           </p>
           <p className={styles.scanningNote}>
-            AI image padh raha hai aur items extract kar raha hai
+            AI is reading the image and extracting items
           </p>
         </div>
       </div>
@@ -297,14 +287,14 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
       <div className={styles.wrap}>
         <div className={styles.reviewHeader}>
           <div>
-            <h3 className={styles.heading}>Scan results — review karo</h3>
+            <h3 className={styles.heading}>Scan results — review before importing</h3>
             <p className={styles.sub}>
-              {items.length} items mili hain{scanResult?.detected_cuisine ? ` · ${scanResult.detected_cuisine}` : ""}.
-              Koi bhi edit ya remove kar sakte ho.
+              {items.length} items found{scanResult?.detected_cuisine ? ` · ${scanResult.detected_cuisine}` : ""}.
+              You can edit or remove any item before importing.
             </p>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={reset}>
-            Naya scan
+            New scan
           </button>
         </div>
 
@@ -320,7 +310,7 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
             {scanResult.menu_currency_symbol && (
               <span className={styles.metaBadge}>Currency: {scanResult.menu_currency_symbol} ({scanResult.menu_currency_code})</span>
             )}
-            <span className={styles.metaBadge}>{scanResult.total_pages} page{scanResult.total_pages > 1 ? "s" : ""} scan hua</span>
+            <span className={styles.metaBadge}>{scanResult.total_pages} page{scanResult.total_pages > 1 ? "s" : ""} scanned</span>
           </div>
         )}
 
@@ -348,14 +338,14 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
 
         <div className={styles.importFooter}>
           <span style={{ fontSize: 14, color: "#6b7280" }}>
-            {items.length} items import honge
+            {items.length} items will be imported
           </span>
           <button
             className="btn btn-primary btn-lg"
             onClick={handleImport}
             disabled={items.length === 0}
           >
-            Menu import karo →
+            Import menu →
           </button>
         </div>
       </div>
@@ -368,8 +358,8 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
       <div className={styles.wrap}>
         <div className={styles.scanningWrap}>
           <div className={styles.spinner} />
-          <h3 className={styles.scanningText}>Menu save ho raha hai…</h3>
-          <p className={styles.scanningSubtext}>{items.length} items database mein ja rahe hain</p>
+          <h3 className={styles.scanningText}>Saving your menu…</h3>
+          <p className={styles.scanningSubtext}>{items.length} items are being added to your menu</p>
         </div>
       </div>
     );
@@ -381,13 +371,13 @@ export default function MenuScanUpload({ restaurantId, onImportDone }) {
       <div className={styles.wrap}>
         <div className={styles.doneWrap}>
           <div className={styles.doneIcon}>✓</div>
-          <h3 className={styles.heading}>Menu import ho gaya!</h3>
+          <h3 className={styles.heading}>Menu imported successfully!</h3>
           <p className={styles.sub}>
-            Saare items ab aapke menu mein add ho gaye hain. Aap unhe
-            edit kar sakte ho ya aur items manually add kar sakte ho.
+            All items have been added to your menu. You can edit them individually
+            or add more items manually.
           </p>
           <button className="btn btn-secondary" onClick={reset}>
-            Aur scan karo
+            Scan another menu
           </button>
         </div>
       </div>

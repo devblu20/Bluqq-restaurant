@@ -9,61 +9,90 @@ const STEPS = [
 
 export default function OnboardingStepper({ currentStep }) {
   const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
+  const progressPct = ((currentIndex + 1) / STEPS.length) * 100;
 
   return (
-    <div className="w-full">
-      {/* Mobile: just show step X of Y */}
-      <div className="sm:hidden flex items-center justify-between mb-1">
-        <span className="text-sm font-semibold text-gray-700">
+    <div style={{ width: "100%" }}>
+
+      {/* ── Mobile: step X of Y label ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}
+        className="stepper-mobile-label">
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
           Step {currentIndex + 1} of {STEPS.length}
         </span>
-        <span className="text-sm text-gray-500">{STEPS[currentIndex]?.label}</span>
+        <span style={{ fontSize: 13, color: "#6aad7a", fontWeight: 500 }}>
+          {STEPS[currentIndex]?.label}
+        </span>
       </div>
 
-      {/* Desktop stepper */}
-      <div className="hidden sm:flex items-center w-full">
+      {/* ── Desktop: full stepper ── */}
+      <div style={{ display: "flex", alignItems: "center", width: "100%" }}
+        className="stepper-desktop">
         {STEPS.map((step, i) => {
           const done = i < currentIndex;
           const active = i === currentIndex;
+
+          const circleBg = done || active ? "#1a6b3a" : "#f2f9f4";
+          const circleColor = done || active ? "white" : "#9dbeaa";
+          const circleBorder = active ? "4px solid #b8dfc7" : done || active ? "none" : "1.5px solid #dceee3";
+
+          const labelColor = active ? "#1a6b3a" : done ? "#4a7a58" : "#9dbeaa";
+
           return (
-            <div key={step.key} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                    ${done ? "bg-brand-500 text-white" : ""}
-                    ${active ? "bg-brand-500 text-white ring-4 ring-brand-100" : ""}
-                    ${!done && !active ? "bg-gray-100 text-gray-400" : ""}
-                  `}
-                >
+            <div key={step.key} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : "none" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: circleBg, color: circleColor,
+                  border: circleBorder,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 800,
+                  transition: "all 0.2s",
+                  boxSizing: "border-box",
+                }}>
                   {done ? <Check size={16} /> : i + 1}
                 </div>
-                <span
-                  className={`mt-1.5 text-xs font-medium whitespace-nowrap
-                    ${active ? "text-brand-600" : done ? "text-gray-600" : "text-gray-400"}
-                  `}
-                >
+                <span style={{
+                  marginTop: 6, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+                  color: labelColor, transition: "color 0.2s",
+                }}>
                   {step.label}
                 </span>
               </div>
+
+              {/* Connector line */}
               {i < STEPS.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-2 mb-5 rounded transition-all
-                    ${i < currentIndex ? "bg-brand-400" : "bg-gray-200"}
-                  `}
-                />
+                <div style={{
+                  flex: 1, height: 2, margin: "0 8px", marginBottom: 20, borderRadius: 4,
+                  background: i < currentIndex ? "#1a6b3a" : "#dceee3",
+                  transition: "background 0.3s",
+                }} />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Progress bar (mobile) */}
-      <div className="sm:hidden w-full bg-gray-200 rounded-full h-1.5 mt-1">
-        <div
-          className="bg-brand-500 h-1.5 rounded-full transition-all duration-500"
-          style={{ width: `${((currentIndex + 1) / STEPS.length) * 100}%` }}
-        />
+      {/* ── Mobile: progress bar ── */}
+      <div style={{ width: "100%", background: "#dceee3", borderRadius: 999, height: 6, marginTop: 4 }}
+        className="stepper-mobile-bar">
+        <div style={{
+          width: `${progressPct}%`, height: 6, borderRadius: 999,
+          background: "#1a6b3a", transition: "width 0.5s ease",
+        }} />
       </div>
+
+      {/* Responsive visibility handled via a small style block */}
+      <style>{`
+        @media (min-width: 640px) {
+          .stepper-mobile-label { display: none !important; }
+          .stepper-mobile-bar   { display: none !important; }
+          .stepper-desktop      { display: flex !important; }
+        }
+        @media (max-width: 639px) {
+          .stepper-desktop { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
