@@ -273,8 +273,8 @@ export default function Dashboard() {
                     <p style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.2em" }}>Welcome Back</p>
                   </div>
                   <h2 style={{ fontSize: 42, fontWeight: 800, color: "white", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 18 }}>
-                    {restaurant?.owner_name} 👋
-                  </h2>
+  {restaurant?.name} 🍽️
+</h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ padding: "5px 14px", borderRadius: 8, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>
                       {restaurant?.city}
