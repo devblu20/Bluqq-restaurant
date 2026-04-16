@@ -1,12 +1,26 @@
-# ─────────────────────────────────────────────
-# Menu Scanner (converted from main.py)
-# ─────────────────────────────────────────────
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, UploadFile
+from app.models.menu import MenuCategory, MenuItem, MenuUpload, ParseStatus
+from app.models.restaurant import Restaurant, OnboardingStatus
+from app.schemas.menu import ScanImportRequest
+from app.schemas.menu import (
+    CategoryCreate, MenuItemCreate, MenuItemUpdate,
+    GoLiveCheckResponse,
+)
 import anthropic
 import base64
 import json
-import re
 import uuid
-from typing import Optional
+import os
+import shutil
+
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/restaurant_uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# ─────────────────────────────────────────────
+# Scanner Constants
+# ─────────────────────────────────────────────
 
 CUISINE_CURRENCY_MAP = {
     "north indian": ("₹", "INR"), "south indian": ("₹", "INR"),
@@ -107,6 +121,10 @@ Return this EXACT structure:
 }"""
 
 
+# ─────────────────────────────────────────────
+# Scanner Private Helpers
+# ─────────────────────────────────────────────
+
 def _strip_fences(raw: str) -> str:
     """Remove markdown code fences from Claude response."""
     raw = raw.strip()
@@ -154,6 +172,10 @@ def _scan_one_page(client: anthropic.Anthropic, b64: str, mime: str, page_num: i
     return json.loads(raw)
 
 
+# ─────────────────────────────────────────────
+# Scanner Public Function
+# ─────────────────────────────────────────────
+
 def scan_menu_images(
     db: Session,
     restaurant_id: str,
@@ -161,12 +183,12 @@ def scan_menu_images(
 ) -> dict:
     """
     Multiple menu images ko scan karke DB mein save karta hai.
-    
+
     Args:
         db: Database session
         restaurant_id: Restaurant ka ID
         images: List of (image_bytes, mime_type) tuples
-    
+
     Returns:
         Summary dict with counts and metadata
     """
@@ -196,7 +218,7 @@ def scan_menu_images(
 
             page_items = parsed.get("items", [])
             for item in page_items:
-                item["page"] = page_num  # force correct page number
+                item["page"] = page_num
 
             print(f"[SCAN] → Page {page_num}: {len(page_items)} items found")
             all_items.extend(page_items)
@@ -236,7 +258,6 @@ def scan_menu_images(
             item["currency_symbol"] = sym
         if not item.get("currency_code"):
             item["currency_code"] = code
-        # Parse price_value if missing
         if item.get("price") and item.get("price_value") is None:
             digits = "".join(c for c in str(item["price"]) if c.isdigit() or c == ".")
             try:
@@ -246,12 +267,11 @@ def scan_menu_images(
 
     # ── Save to DB ────────────────────────────────────────────────────────────
     items_saved = 0
-    category_cache: dict[str, str] = {}  # name -> id
+    category_cache: dict[str, str] = {}
 
     for item in deduped:
         cat_name = (item.get("category") or "General").strip()
 
-        # Get or create category
         if cat_name not in category_cache:
             existing_cat = (
                 db.query(MenuCategory)
@@ -279,7 +299,6 @@ def scan_menu_images(
         if not item_name:
             continue
 
-        # Duplicate check
         exists = (
             db.query(MenuItem)
             .filter(
@@ -325,3 +344,214 @@ def scan_menu_images(
         "menu_currency_code": code,
         "total_pages": len(images),
     }
+
+
+# ─────────────────────────────────────────────
+# Import from Scan (existing function)
+# ─────────────────────────────────────────────
+
+def import_from_scan(restaurant_id: str, data: "ScanImportRequest", db: Session):
+    """
+    MenuScanner se aaya hua JSON leke DB mein save karta hai.
+    """
+    created_categories = {}
+    created_items = []
+
+    for item in data.items:
+        cat_name = item.get("category") or "General"
+
+        if cat_name not in created_categories:
+            existing_cat = (
+                db.query(MenuCategory)
+                .filter_by(restaurant_id=restaurant_id, name=cat_name)
+                .first()
+            )
+            if existing_cat:
+                created_categories[cat_name] = existing_cat.id
+            else:
+                new_cat = MenuCategory(
+                    restaurant_id=restaurant_id,
+                    name=cat_name,
+                    is_active=True
+                )
+                db.add(new_cat)
+                db.flush()
+                created_categories[cat_name] = new_cat.id
+
+        price_value = item.get("price_value") or 0.0
+
+        menu_item = MenuItem(
+            restaurant_id=restaurant_id,
+            category_id=created_categories[cat_name],
+            name=item.get("name", "Unnamed Item"),
+            description=item.get("description"),
+            price=float(price_value),
+            is_available=True,
+        )
+        db.add(menu_item)
+        created_items.append(menu_item)
+
+    r = db.query(Restaurant).filter_by(id=restaurant_id).first()
+    if r:
+        r.onboarding_status = "menu_completed"
+
+    db.commit()
+
+    return {
+        "imported_items": len(created_items),
+        "imported_categories": len(created_categories),
+        "category_names": list(created_categories.keys()),
+        "message": f"{len(created_items)} items successfully imported"
+    }
+
+
+# ─────────────────────────────────────────────
+# Categories
+# ─────────────────────────────────────────────
+
+def create_category(db: Session, restaurant_id: str, data: CategoryCreate) -> MenuCategory:
+    cat = MenuCategory(restaurant_id=restaurant_id, **data.dict())
+    db.add(cat)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
+def get_categories(db: Session, restaurant_id: str):
+    return db.query(MenuCategory).filter(MenuCategory.restaurant_id == restaurant_id).all()
+
+
+# ─────────────────────────────────────────────
+# Menu Items
+# ─────────────────────────────────────────────
+
+def create_menu_item(db: Session, restaurant_id: str, data: MenuItemCreate) -> MenuItem:
+    item_data = data.dict()
+
+    if not item_data.get("category_id"):
+        item_data["category_id"] = None
+
+    if not item_data.get("description"):
+        item_data["description"] = None
+
+    item = MenuItem(restaurant_id=restaurant_id, **item_data)
+    db.add(item)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def update_menu_item(db: Session, restaurant_id: str, item_id: str, data: MenuItemUpdate) -> MenuItem:
+    item = db.query(MenuItem).filter(
+        MenuItem.id == item_id, MenuItem.restaurant_id == restaurant_id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+    update_data = data.dict(exclude_unset=True)
+
+    if "category_id" in update_data and not update_data["category_id"]:
+        update_data["category_id"] = None
+
+    if "description" in update_data and not update_data["description"]:
+        update_data["description"] = None
+
+    for field, value in update_data.items():
+        setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def get_menu_items(db: Session, restaurant_id: str):
+    return db.query(MenuItem).filter(MenuItem.restaurant_id == restaurant_id).all()
+
+
+# ─────────────────────────────────────────────
+# Uploads
+# ─────────────────────────────────────────────
+
+def upload_menu_file(db: Session, restaurant_id: str, file: UploadFile) -> MenuUpload:
+    file_ext = file.filename.split(".")[-1].lower()
+    file_type = "pdf" if file_ext == "pdf" else "image"
+    filename = f"{uuid.uuid4()}.{file_ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    upload = MenuUpload(
+        restaurant_id=restaurant_id,
+        file_url=filepath,
+        file_type=file_type,
+        parse_status=ParseStatus.pending,
+    )
+    db.add(upload)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(upload)
+    return upload
+
+
+# ─────────────────────────────────────────────
+# Go Live Check
+# ─────────────────────────────────────────────
+
+def go_live_check(db: Session, restaurant_id: str) -> GoLiveCheckResponse:
+    from app.models.menu import RestaurantProfile, RestaurantOrderSettings
+
+    r = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    profile = db.query(RestaurantProfile).filter(
+        RestaurantProfile.restaurant_id == restaurant_id
+    ).first()
+    settings = db.query(RestaurantOrderSettings).filter(
+        RestaurantOrderSettings.restaurant_id == restaurant_id
+    ).first()
+    has_items = db.query(MenuItem).filter(MenuItem.restaurant_id == restaurant_id).count() > 0
+    has_upload = db.query(MenuUpload).filter(MenuUpload.restaurant_id == restaurant_id).count() > 0
+
+    basic_ok = r.onboarding_status != OnboardingStatus.started
+    ops_ok = profile is not None
+    menu_ok = has_items or has_upload
+    settings_ok = settings is not None
+
+    missing = []
+    if not basic_ok:
+        missing.append("Basic restaurant info")
+    if not ops_ok:
+        missing.append("Operational settings")
+    if not menu_ok:
+        missing.append("At least one menu item or menu upload")
+    if not settings_ok:
+        missing.append("Order settings")
+
+    ready = basic_ok and menu_ok and settings_ok
+
+    return GoLiveCheckResponse(
+        restaurant_id=restaurant_id,
+        basic_info=basic_ok,
+        operations=ops_ok,
+        menu=menu_ok,
+        order_settings=settings_ok,
+        ready_for_launch=ready,
+        missing=missing,
+    )
+
+
+# ─────────────────────────────────────────────
+# Private Helper
+# ─────────────────────────────────────────────
+
+def _advance_menu_status(db: Session, restaurant_id: str):
+    r = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+    if r and r.onboarding_status in [
+        OnboardingStatus.started,
+        OnboardingStatus.basic_info_completed,
+        OnboardingStatus.operations_completed,
+    ]:
+        r.onboarding_status = OnboardingStatus.menu_completed
