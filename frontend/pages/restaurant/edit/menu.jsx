@@ -497,11 +497,7 @@ export default function EditMenuPage() {
           ) : (
             <div style={{
   display: "flex",
-  flexDirection: "column",
-  gap: 16,
-  maxWidth: 700,     // 🔥 width control
-  margin: "0 auto"   // 🔥 center
-}}>
+  flexDirection: "column",  gap: 16 }}>
               {filtered.map(item => (
                 <MenuItemCard key={item.id} item={item} categories={categories}
                   onEdit={setModal} onToggle={handleToggle} onDelete={handleDeleteItem} />
