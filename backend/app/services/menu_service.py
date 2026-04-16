@@ -1,312 +1,220 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import anthropic
-import base64
-import json
-import os
-from typing import List, Optional
-
-app = FastAPI(title="MenuScanner API - Global Multi-Image Edition")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, UploadFile
+from app.models.menu import MenuCategory, MenuItem, MenuUpload, ParseStatus
+from app.models.restaurant import Restaurant, OnboardingStatus
+from app.schemas.menu import ScanImportRequest
+from app.schemas.menu import (
+    CategoryCreate, MenuItemCreate, MenuItemUpdate,
+    GoLiveCheckResponse,
 )
+import uuid
+import os
+import shutil
 
-MIME_MAP = {
-    "image/jpeg": "image/jpeg",
-    "image/png":  "image/png",
-    "image/webp": "image/webp",
-    "image/gif":  "image/gif",
-}
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/tmp/restaurant_uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-CUISINE_CURRENCY_MAP = {
-    "north indian": ("₹", "INR"), "south indian": ("₹", "INR"),
-    "mughlai": ("₹", "INR"), "rajasthani": ("₹", "INR"),
-    "bengali": ("₹", "INR"), "gujarati": ("₹", "INR"),
-    "maharashtrian": ("₹", "INR"), "indo-chinese": ("₹", "INR"),
-    "pakistani": ("₨", "PKR"), "sri lankan": ("₨", "LKR"),
-    "nepalese": ("₨", "NPR"),
-    "chinese": ("¥", "CNY"), "chinese-cantonese": ("¥", "CNY"),
-    "chinese-szechuan": ("¥", "CNY"), "dim sum": ("¥", "CNY"),
-    "hong kong style": ("HK$", "HKD"), "taiwanese": ("NT$", "TWD"),
-    "japanese": ("¥", "JPY"), "japanese-sushi": ("¥", "JPY"),
-    "japanese-ramen": ("¥", "JPY"),
-    "korean": ("₩", "KRW"),
-    "thai": ("฿", "THB"), "vietnamese": ("₫", "VND"),
-    "indonesian": ("Rp", "IDR"), "malaysian": ("RM", "MYR"),
-    "filipino": ("₱", "PHP"), "singaporean": ("S$", "SGD"),
-    "emirati": ("AED", "AED"), "saudi arabian": ("SAR", "SAR"),
-    "lebanese": ("LBP", "LBP"), "turkish": ("₺", "TRY"),
-    "persian": ("﷼", "IRR"), "moroccan": ("MAD", "MAD"),
-    "jordanian": ("JOD", "JOD"), "egyptian": ("E£", "EGP"),
-    "qatari": ("QAR", "QAR"), "kuwaiti": ("KWD", "KWD"),
-    "bahraini": ("BHD", "BHD"), "omani": ("OMR", "OMR"),
-    "italian": ("€", "EUR"), "spanish": ("€", "EUR"),
-    "spanish-tapas": ("€", "EUR"), "greek": ("€", "EUR"),
-    "french": ("€", "EUR"), "portuguese": ("€", "EUR"),
-    "german": ("€", "EUR"),
-    "british": ("£", "GBP"),
-    "american": ("$", "USD"), "american-diner": ("$", "USD"),
-    "mexican": ("$", "MXN"), "tex-mex": ("$", "MXN"),
-    "brazilian": ("R$", "BRL"), "caribbean": ("$", "USD"),
-    "peruvian": ("S/", "PEN"), "colombian": ("$", "COP"),
-    "ethiopian": ("Br", "ETB"), "nigerian": ("₦", "NGN"),
-    "south african": ("R", "ZAR"),
-}
 
-SYSTEM_PROMPT = """You are a precise menu digitization expert. Your ONLY job is to extract items that are LITERALLY PRINTED on the menu image.
+# app/services/menu_service.py mein add karo (existing file ke end mein)
 
-════════════════════════════════════════════════
-CRITICAL ANTI-HALLUCINATION RULES
-════════════════════════════════════════════════
 
-1. NEVER invent, guess, or assume items. If you cannot clearly read an item name, SKIP it.
-2. DO NOT add items that "typically appear" in this cuisine but are not visible in this image.
-3. DO NOT split one item into multiple items.
-4. DO NOT add category header names as items unless they have no sub-items listed below them.
-5. COUNT carefully — mentally re-check: "Did I extract this from the actual image or did I imagine it?"
-6. PLAIN variants — only extract "Plain X" if those exact words are printed. Do NOT auto-generate variants.
 
-════════════════════════════════════════════════
-HOW TO HANDLE SECTION HEADERS WITH PRICES
-════════════════════════════════════════════════
+def import_from_scan(restaurant_id: str, data: "ScanImportRequest", db: Session):
+    """
+    MenuScanner se aaya hua JSON leke DB mein save karta hai.
+    Categories auto-create hoti hain, items bhi.
+    """
+    created_categories = {}  # name -> id mapping
+    created_items = []
 
-CASE A — Header has sub-items listed below it:
-  "Veg Sizzler 250/-"
-    Veg Chinese Sizzler
-    Continental Veg Sizzler
-→ Extract ONLY the sub-items with price ₹250. Do NOT extract "Veg Sizzler" as a separate item.
+    for item in data.items:
+        cat_name = item.get("category") or "General"
 
-CASE B — Header has NO sub-items (it IS the item):
-  "Steam Rice 60/-"
-→ Extract "Steam Rice" with price ₹60.
+        # Category pehle se exist karti hai? Nahi to banao
+        if cat_name not in created_categories:
+            existing_cat = (
+                db.query(MenuCategory)
+                .filter_by(restaurant_id=restaurant_id, name=cat_name)
+                .first()
+            )
+            if existing_cat:
+                created_categories[cat_name] = existing_cat.id
+            else:
+                new_cat = MenuCategory(
+                    restaurant_id=restaurant_id,
+                    name=cat_name,
+                    is_active=True
+                )
+                db.add(new_cat)
+                db.flush()  # id generate karne ke liye
+                created_categories[cat_name] = new_cat.id
 
-CASE C — Category heading with price, sub-items below:
-  "Chinese Starters 150/-"
-    Hakka Noodles
-    Chilli Paneer
-→ Extract each sub-item with price ₹150. Do NOT add "Chinese Starters" as an item.
+        # Price extract karo
+        price_value = item.get("price_value") or 0.0
 
-════════════════════════════════════════════════
+        # MenuItem banao
+        menu_item = MenuItem(
+            restaurant_id=restaurant_id,
+            category_id=created_categories[cat_name],
+            name=item.get("name", "Unnamed Item"),
+            description=item.get("description"),
+            price=float(price_value),
+            is_available=True,
+        )
+        db.add(menu_item)
+        created_items.append(menu_item)
 
-Respond ONLY with a valid JSON object. No explanation, no markdown, no backticks.
+    # Menu step complete mark karo
+    from app.models.restaurant import Restaurant
+    r = db.query(Restaurant).filter_by(id=restaurant_id).first()
+    if r:
+        r.onboarding_status = "menu_completed"
 
-Return this EXACT structure:
-{
-  "detected_cuisine": "string — be SPECIFIC",
-  "cuisine_region": "string — one of: South Asia, East Asia, Southeast Asia, Middle East, Mediterranean, European, American, African, Fusion",
-  "restaurant_name": "string or null",
-  "language_detected": "string",
-  "menu_currency_symbol": "string — e.g. ₹ $ € £ AED",
-  "menu_currency_code": "string — ISO 4217 e.g. INR USD EUR GBP AED",
-  "items": [
-    {
-      "name": "string — exact item name as printed",
-      "name_original": "string or null",
-      "description": "string or null",
-      "price": "string — exact price with symbol e.g. ₹150 or null",
-      "price_value": "number or null",
-      "currency_symbol": "string",
-      "currency_code": "string",
-      "category": "string — EXACT category heading from menu",
-      "tags": ["array from: vegetarian, non-vegetarian, vegan, spicy, chef-special, gluten-free, jain, bestseller, halal, contains-pork, contains-alcohol, dairy-free, nut-free, signature, raw"],
-      "cuisine_type": "string — e.g. Indian, Chinese, Italian, Arabic",
-      "image_link": null,
-      "page": "number — page number as specified in the prompt"
+    db.commit()
+
+    return {
+        "imported_items": len(created_items),
+        "imported_categories": len(created_categories),
+        "category_names": list(created_categories.keys()),
+        "message": f"{len(created_items)} items successfully imported"
     }
-  ]
-}
 
-CUISINE DETECTION:
-SOUTH ASIA: North Indian, South Indian, Mughlai, Rajasthani, Bengali, Gujarati, Maharashtrian, Indo-Chinese, Pakistani, Sri Lankan, Nepalese
-EAST ASIA: Chinese-Cantonese, Chinese-Szechuan, Japanese-Sushi, Japanese-Ramen, Korean, Taiwanese, Hong Kong Style, Dim Sum
-SOUTHEAST ASIA: Thai, Vietnamese, Indonesian, Malaysian, Filipino, Singaporean
-MIDDLE EAST: Emirati, Lebanese, Turkish, Persian, Saudi Arabian, Jordanian, Egyptian, Moroccan
-MEDITERRANEAN/EUROPEAN: Italian, Spanish-Tapas, Greek, French, German, British, Portuguese
-AMERICAN: American-Diner, Mexican, Tex-Mex, Brazilian, Caribbean, Peruvian
-AFRICAN: Ethiopian, Nigerian, South African
-FUSION: Pan-Asian, Modern European, Contemporary, Cafe, Fast Food, Street Food
-
-VEG/NON-VEG:
-INDIAN: Green dot/square = vegetarian, Red dot/square = non-vegetarian, (J) = jain+vegetarian
-ARABIC/GULF: Meat = halal by default
-JAPANESE/CHINESE: Infer from ingredients
-WESTERN: (V)/leaf = vegetarian, (VE)/(VG) = vegan, (GF) = gluten-free
-SPICY: Chili/flame icons, "spicy", "hot", "szechuan", "fiery" → tag "spicy"
-
-CURRENCY:
-India=₹ INR | UAE=AED | Saudi=SAR | Qatar=QAR | Kuwait=KWD | USA=$ USD | UK=£ GBP | EU=€ EUR
-Japan=¥ JPY | Korea=₩ KRW | Thailand=฿ THB | Malaysia=RM MYR | Singapore=S$ SGD | HK=HK$ HKD"""
+# --- Categories ---
+def create_category(db: Session, restaurant_id: str, data: CategoryCreate) -> MenuCategory:
+    cat = MenuCategory(restaurant_id=restaurant_id, **data.dict())
+    db.add(cat)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(cat)
+    return cat
 
 
-class ScanResponse(BaseModel):
-    items: list[dict]
-    total: int
-    detected_cuisine: str
-    cuisine_region: Optional[str]
-    restaurant_name: Optional[str]
-    language_detected: Optional[str]
-    menu_currency_symbol: Optional[str]
-    menu_currency_code: Optional[str]
-    total_pages: int
-    images_processed: int
+def get_categories(db: Session, restaurant_id: str):
+    return db.query(MenuCategory).filter(MenuCategory.restaurant_id == restaurant_id).all()
 
 
-def strip_fences(raw: str) -> str:
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-    if raw.endswith("```"):
-        raw = raw[:-3].strip()
-    return raw
+# --- Items ---
+def create_menu_item(db: Session, restaurant_id: str, data: MenuItemCreate) -> MenuItem:
+    item_data = data.dict()
+
+    # Convert empty string category_id to None (foreign key can't be empty string)
+    if not item_data.get("category_id"):
+        item_data["category_id"] = None
+
+    # Convert empty string description to None
+    if not item_data.get("description"):
+        item_data["description"] = None
+
+    item = MenuItem(restaurant_id=restaurant_id, **item_data)
+    db.add(item)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(item)
+    return item
 
 
-def scan_one_page(client: anthropic.Anthropic, b64: str, mime: str, page_num: int) -> dict:
-    """Scan a single menu page image and return parsed dict."""
-    response = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=16000,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": f"This is page {page_num} of the menu. Extract ALL items visible on this page only."
-                },
-                {
-                    "type": "image",
-                    "source": {"type": "base64", "media_type": mime, "data": b64}
-                },
-                {
-                    "type": "text",
-                    "text": (
-                        f"Extract every item printed on this page. "
-                        f"Set page={page_num} on ALL items. "
-                        "Set image_link=null on ALL items. "
-                        "Do NOT hallucinate items not visible here. "
-                        "Return only the JSON object."
-                    )
-                }
-            ]
-        }],
+def update_menu_item(db: Session, restaurant_id: str, item_id: str, data: MenuItemUpdate) -> MenuItem:
+    item = db.query(MenuItem).filter(
+        MenuItem.id == item_id, MenuItem.restaurant_id == restaurant_id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    update_data = data.dict(exclude_unset=True)
+
+    # Convert empty string category_id to None
+    if "category_id" in update_data and not update_data["category_id"]:
+        update_data["category_id"] = None
+
+    # Convert empty string description to None
+    if "description" in update_data and not update_data["description"]:
+        update_data["description"] = None
+
+    for field, value in update_data.items():
+        setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def get_menu_items(db: Session, restaurant_id: str):
+    return db.query(MenuItem).filter(MenuItem.restaurant_id == restaurant_id).all()
+
+
+# --- Uploads ---
+def upload_menu_file(db: Session, restaurant_id: str, file: UploadFile) -> MenuUpload:
+    file_ext = file.filename.split(".")[-1].lower()
+    file_type = "pdf" if file_ext == "pdf" else "image"
+    filename = f"{uuid.uuid4()}.{file_ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    upload = MenuUpload(
+        restaurant_id=restaurant_id,
+        file_url=filepath,
+        file_type=file_type,
+        parse_status=ParseStatus.pending,
     )
-    raw = strip_fences(response.content[0].text)
-    return json.loads(raw)
+    db.add(upload)
+    _advance_menu_status(db, restaurant_id)
+    db.commit()
+    db.refresh(upload)
+    return upload
 
 
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "MenuScanner API - Global Multi-Image Edition"}
+# --- Go Live Check ---
+def go_live_check(db: Session, restaurant_id: str) -> GoLiveCheckResponse:
+    from app.models.restaurant import Restaurant
+    from app.models.menu import RestaurantProfile, RestaurantOrderSettings
 
+    r = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
 
-@app.post("/scan", response_model=ScanResponse)
-async def scan_menu(files: List[UploadFile] = File(...)):
-    if not files:
-        raise HTTPException(400, "No files uploaded.")
-    if len(files) > 10:
-        raise HTTPException(400, "Maximum 10 images allowed per scan.")
+    profile = db.query(RestaurantProfile).filter(
+        RestaurantProfile.restaurant_id == restaurant_id
+    ).first()
+    settings = db.query(RestaurantOrderSettings).filter(
+        RestaurantOrderSettings.restaurant_id == restaurant_id
+    ).first()
+    has_items = db.query(MenuItem).filter(MenuItem.restaurant_id == restaurant_id).count() > 0
+    has_upload = db.query(MenuUpload).filter(MenuUpload.restaurant_id == restaurant_id).count() > 0
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(500, "ANTHROPIC_API_KEY not set in .env")
+    basic_ok = r.onboarding_status != OnboardingStatus.started
+    ops_ok = profile is not None
+    menu_ok = has_items or has_upload
+    settings_ok = settings is not None
 
-    client = anthropic.Anthropic(api_key=api_key)
+    missing = []
+    if not basic_ok:
+        missing.append("Basic restaurant info")
+    if not ops_ok:
+        missing.append("Operational settings")
+    if not menu_ok:
+        missing.append("At least one menu item or menu upload")
+    if not settings_ok:
+        missing.append("Order settings")
 
-    # ── Read all uploaded files into memory ──────────────────────────────────
-    pages_data = []
-    for i, file in enumerate(files):
-        mime = file.content_type
-        if mime not in MIME_MAP:
-            raise HTTPException(400, f"'{file.filename}' unsupported type. Use JPEG/PNG/WebP.")
-        img_bytes = await file.read()
-        if len(img_bytes) > 20 * 1024 * 1024:
-            raise HTTPException(400, f"'{file.filename}' too large. Max 20 MB.")
-        b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
-        pages_data.append((b64, mime))
+    ready = basic_ok and menu_ok and settings_ok
 
-    print(f"[SCAN] {len(pages_data)} page(s) received — scanning each separately")
-
-    # ── Scan EACH PAGE with its own independent Claude API call ─────────────
-    # This is the key fix: one call per page guarantees full extraction
-    all_items = []
-    first_meta = None
-
-    for i, (b64, mime) in enumerate(pages_data):
-        page_num = i + 1
-        try:
-            print(f"[SCAN] → Page {page_num} scanning...")
-            parsed = scan_one_page(client, b64, mime, page_num)
-
-            page_items = parsed.get("items", [])
-            # Force correct page number on every item
-            for item in page_items:
-                item["page"] = page_num
-
-            print(f"[SCAN] → Page {page_num}: {len(page_items)} items found")
-            all_items.extend(page_items)
-
-            if first_meta is None:
-                first_meta = parsed
-
-        except json.JSONDecodeError as e:
-            raise HTTPException(500, f"Parse error on page {page_num}: {e}")
-        except anthropic.APIError as e:
-            raise HTTPException(502, f"Claude API error on page {page_num}: {e}")
-
-    if not first_meta:
-        raise HTTPException(500, "No pages processed.")
-
-    # ── Deduplicate across pages (same name + category) ──────────────────────
-    seen = set()
-    deduped = []
-    for item in all_items:
-        key = (item.get("name", "").lower().strip(), item.get("category", "").lower().strip())
-        if key not in seen:
-            seen.add(key)
-            deduped.append(item)
-
-    print(f"[SCAN] Final: {len(deduped)} items ({len(all_items)} before dedup)")
-
-    # ── Currency fallback ────────────────────────────────────────────────────
-    cuisine_lower = first_meta.get("detected_cuisine", "").lower()
-    fallback = CUISINE_CURRENCY_MAP.get(cuisine_lower, ("$", "USD"))
-    sym = first_meta.get("menu_currency_symbol") or fallback[0]
-    code = first_meta.get("menu_currency_code") or fallback[1]
-
-    # ── Post-process every item ──────────────────────────────────────────────
-    for item in deduped:
-        item["image_link"] = None
-        if not item.get("currency_symbol"):
-            item["currency_symbol"] = sym
-        if not item.get("currency_code"):
-            item["currency_code"] = code
-        if item.get("price") and item.get("price_value") is None:
-            digits = "".join(c for c in str(item["price"]) if c.isdigit() or c == ".")
-            try:
-                item["price_value"] = float(digits) if digits else None
-            except ValueError:
-                item["price_value"] = None
-
-    return ScanResponse(
-        items=deduped,
-        total=len(deduped),
-        detected_cuisine=first_meta.get("detected_cuisine", "Unknown"),
-        cuisine_region=first_meta.get("cuisine_region"),
-        restaurant_name=first_meta.get("restaurant_name"),
-        language_detected=first_meta.get("language_detected"),
-        menu_currency_symbol=sym,
-        menu_currency_code=code,
-        total_pages=len(pages_data),
-        images_processed=len(pages_data),
+    return GoLiveCheckResponse(
+        restaurant_id=restaurant_id,
+        basic_info=basic_ok,
+        operations=ops_ok,
+        menu=menu_ok,
+        order_settings=settings_ok,
+        ready_for_launch=ready,
+        missing=missing,
     )
+
+
+def _advance_menu_status(db: Session, restaurant_id: str):
+    r = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
+    if r and r.onboarding_status in [
+        OnboardingStatus.started,
+        OnboardingStatus.basic_info_completed,
+        OnboardingStatus.operations_completed,
+    ]:
+        r.onboarding_status = OnboardingStatus.menu_completed
