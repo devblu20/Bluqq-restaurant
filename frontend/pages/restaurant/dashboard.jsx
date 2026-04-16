@@ -21,7 +21,7 @@ const NAV_MAIN = [
 
 const NAV_SETTINGS = [
   { label: "Settings", icon: Settings, href: "/restaurant/edit/order-settings" },
-  { label: "Profile",  icon: User,     href: "/restaurant/edit/basic-info" },
+  { label: "Profile",  icon: User,     href: "/restaurant/profile" },
 ];
 
 export default function Dashboard() {
