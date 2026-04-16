@@ -4,7 +4,7 @@ import Head from "next/head";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
-import { getMe, getRestaurant, updateRestaurant } from "../../../services/api";
+import { getMe, getRestaurant, updateRestaurant } from "../../services/api";
 import {
   Loader2, Store, MapPin, Phone, Mail, Save, User,
   UtensilsCrossed, LayoutGrid, BookOpen, ShoppingBag,
