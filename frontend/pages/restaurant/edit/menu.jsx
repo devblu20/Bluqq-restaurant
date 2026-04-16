@@ -153,11 +153,7 @@ function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
     {item.cuisine_type}
   </span>
 )}
-            {cat && (
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 10px", background: "#f2f9f4", color: "#4a7a58", borderRadius: 999, border: "1.5px solid #dceee3" }}>
-                {cat.name}
-              </span>
-            )}
+            
           </div>
         </div>
       </div>
