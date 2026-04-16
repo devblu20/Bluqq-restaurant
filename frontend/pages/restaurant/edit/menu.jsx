@@ -76,7 +76,8 @@ function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
   return (
     <div style={{
       background: item.is_available ? "white" : "#fafafa",
-      borderRadius: 20, padding: 18, border: "1.5px solid #e8f0eb",
+      padding: "12px 14px",   // 🔥 reduce spacing
+borderRadius: 14, border: "1.5px solid #e8f0eb",
       boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
       opacity: item.is_available ? 1 : 0.65,
       transition: "transform 0.16s, box-shadow 0.16s",
@@ -85,7 +86,7 @@ function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.04)"; }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-        <div style={{ width: 58, height: 58, borderRadius: 14, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
           {item.image_url
             ? <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             : <ImageIcon size={20} color="#9dbeaa" />}
@@ -157,7 +158,7 @@ function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, paddingTop: 12, borderTop: "1.5px solid #edf6f0" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid #edf6f0" }}>
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: item.is_available ? "#1a6b3a" : "#9ca3af" }}>
           {item.is_available ? "● In Stock" : "○ Out of Stock"}
         </span>
@@ -218,7 +219,7 @@ function ItemModal({ item, categories, onClose, onSave }) {
             <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Description</label>
             <textarea style={{ ...inputStyle, resize: "none", height: 80 }} value={form.description} onChange={set("description")} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
               <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Price (₹) *</label>
               <input style={inputStyle} type="number" value={form.price} onChange={set("price")} required />
@@ -424,7 +425,7 @@ export default function EditMenuPage() {
                 style={{ width: "100%", paddingLeft: 40, paddingRight: 16, paddingTop: 11, paddingBottom: 11, fontSize: 14, background: "white", border: "1.5px solid #dceee3", borderRadius: 14, outline: "none", fontFamily: "'Inter', sans-serif", color: "#111827" }}
               />
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
 
   <button onClick={() => setFilterTag("all")}
     style={{
