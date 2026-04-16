@@ -495,7 +495,9 @@ export default function EditMenuPage() {
               <p style={{ fontSize: 13, color: "#9dbeaa" }}>Add your first dish or try a different filter</p>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+            <div style={{
+  display: "flex",
+  flexDirection: "column",  gap: 16 }}>
               {filtered.map(item => (
                 <MenuItemCard key={item.id} item={item} categories={categories}
                   onEdit={setModal} onToggle={handleToggle} onDelete={handleDeleteItem} />
