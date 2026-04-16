@@ -112,7 +112,47 @@ function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: "#1a6b3a" }}>₹{item.price}</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#1a6b3a" }}>
+  ₹{item.price}
+</span>
+
+{cat && (
+  <span style={{
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "3px 10px",
+    background: "#f2f9f4",
+    borderRadius: 999
+  }}>
+    {cat.name}
+  </span>
+)}
+
+{/* 🔥 TAGS */}
+{item.tags?.map((tag, i) => (
+  <span key={i} style={{
+    fontSize: 10,
+    padding: "3px 8px",
+    borderRadius: 999,
+    background: tag === "veg" ? "#dcfce7" : "#fee2e2",
+    color: tag === "veg" ? "#166534" : "#991b1b"
+  }}>
+    {tag}
+  </span>
+))}
+
+{/* 🔥 CUISINE */}
+{item.cuisine_type && (
+  <span style={{
+    fontSize: 10,
+    padding: "3px 8px",
+    borderRadius: 999,
+    background: "#eef2ff",
+    color: "#3730a3"
+  }}>
+    {item.cuisine_type}
+  </span>
+)}
             {cat && (
               <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 10px", background: "#f2f9f4", color: "#4a7a58", borderRadius: 999, border: "1.5px solid #dceee3" }}>
                 {cat.name}
@@ -215,6 +255,7 @@ export default function EditMenuPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("all");
+  const [filterTag, setFilterTag] = useState("all");
   const [modal, setModal] = useState(null);
   const [newCatName, setNewCatName] = useState("");
   const [addingCat, setAddingCat] = useState(false);
@@ -287,9 +328,10 @@ export default function EditMenuPage() {
   };
 
   const filtered = items.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()) &&
-    (filterCat === "all" || item.category_id === filterCat)
-  );
+  item.name.toLowerCase().includes(search.toLowerCase()) &&
+  (filterCat === "all" || item.category_id === filterCat) &&
+  (filterTag === "all" || item.tags?.includes(filterTag))
+);
 
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#eef5f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -386,6 +428,42 @@ export default function EditMenuPage() {
                 style={{ width: "100%", paddingLeft: 40, paddingRight: 16, paddingTop: 11, paddingBottom: 11, fontSize: 14, background: "white", border: "1.5px solid #dceee3", borderRadius: 14, outline: "none", fontFamily: "'Inter', sans-serif", color: "#111827" }}
               />
             </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+
+  <button onClick={() => setFilterTag("all")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "all" ? "#1a6b3a" : "white",
+      color: filterTag === "all" ? "white" : "black"
+    }}>
+    All
+  </button>
+
+  <button onClick={() => setFilterTag("veg")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "veg" ? "#16a34a" : "white",
+      color: filterTag === "veg" ? "white" : "black"
+    }}>
+    Veg
+  </button>
+
+  <button onClick={() => setFilterTag("non-veg")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "non-veg" ? "#dc2626" : "white",
+      color: filterTag === "non-veg" ? "white" : "black"
+    }}>
+    Non-Veg
+  </button>
+
+</div>
             <select
               value={filterCat} onChange={e => setFilterCat(e.target.value)}
               style={{ padding: "11px 16px", fontSize: 13, fontWeight: 600, background: "white", border: "1.5px solid #dceee3", borderRadius: 14, color: "#4a7a58", cursor: "pointer", outline: "none", fontFamily: "'Inter', sans-serif" }}
