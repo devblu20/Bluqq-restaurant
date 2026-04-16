@@ -314,14 +314,22 @@ def scan_menu_images(
         price_val = item.get("price_value") or 0.0
 
         new_item = MenuItem(
-            id=str(uuid.uuid4()),
-            restaurant_id=restaurant_id,
-            category_id=cat_id,
-            name=item_name,
-            description=item.get("description") or None,
-            price=float(price_val),
-            is_available=True,
-        )
+    id=str(uuid.uuid4()),
+    restaurant_id=restaurant_id,
+    category_id=cat_id,
+    name=item_name,
+    description=item.get("description") or None,
+    price=float(price_val),
+
+    # 🔥 ADD THIS (MUST)
+    tags=item.get("tags", []),
+    cuisine_type=item.get("cuisine_type"),
+    currency_symbol=item.get("currency_symbol"),
+    currency_code=item.get("currency_code"),
+    source_page=item.get("page"),
+
+    is_available=True,
+)
         db.add(new_item)
         items_saved += 1
 
@@ -381,13 +389,21 @@ def import_from_scan(restaurant_id: str, data: "ScanImportRequest", db: Session)
         price_value = item.get("price_value") or 0.0
 
         menu_item = MenuItem(
-            restaurant_id=restaurant_id,
-            category_id=created_categories[cat_name],
-            name=item.get("name", "Unnamed Item"),
-            description=item.get("description"),
-            price=float(price_value),
-            is_available=True,
-        )
+    restaurant_id=restaurant_id,
+    category_id=created_categories[cat_name],
+    name=item.get("name", "Unnamed Item"),
+    description=item.get("description"),
+    price=float(price_value),
+
+    # 🔥 ADD THESE LINES
+    tags=item.get("tags", []),
+    cuisine_type=item.get("cuisine_type"),
+    currency_symbol=item.get("currency_symbol"),
+    currency_code=item.get("currency_code"),
+    source_page=item.get("page"),
+
+    is_available=True,
+)
         db.add(menu_item)
         created_items.append(menu_item)
 

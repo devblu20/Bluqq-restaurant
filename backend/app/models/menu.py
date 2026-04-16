@@ -1,3 +1,4 @@
+python
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, Float, Text, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -9,6 +10,10 @@ from app.database import Base
 def gen_uuid():
     return str(uuid.uuid4())
 
+
+# ─────────────────────────────────────────────
+# 🔹 Restaurant Profile
+# ─────────────────────────────────────────────
 
 class RestaurantProfile(Base):
     __tablename__ = "restaurant_profiles"
@@ -28,6 +33,10 @@ class RestaurantProfile(Base):
     restaurant = relationship("Restaurant", back_populates="profile")
 
 
+# ─────────────────────────────────────────────
+# 🔹 Order Settings
+# ─────────────────────────────────────────────
+
 class RestaurantOrderSettings(Base):
     __tablename__ = "restaurant_order_settings"
 
@@ -43,6 +52,10 @@ class RestaurantOrderSettings(Base):
     restaurant = relationship("Restaurant", back_populates="order_settings")
 
 
+# ─────────────────────────────────────────────
+# 🔹 Menu Category
+# ─────────────────────────────────────────────
+
 class MenuCategory(Base):
     __tablename__ = "menu_categories"
 
@@ -56,17 +69,34 @@ class MenuCategory(Base):
     items = relationship("MenuItem", back_populates="category")
 
 
+# ─────────────────────────────────────────────
+# 🔹 Menu Item (UPDATED WITH SCANNER SUPPORT)
+# ─────────────────────────────────────────────
+
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
     id = Column(String, primary_key=True, default=gen_uuid)
     restaurant_id = Column(String, ForeignKey("restaurants.id"), nullable=False)
     category_id = Column(String, ForeignKey("menu_categories.id"))
+
     name = Column(String, nullable=False)
     description = Column(Text)
+
     price = Column(Float, nullable=False)
+
     image_url = Column(String)
     is_available = Column(Boolean, default=True)
+
+    # 🔥 NEW FIELDS (Scanner + Future Ready)
+    tags = Column(JSON, default=[])  # ["veg", "spicy"]
+    cuisine_type = Column(String, nullable=True)
+
+    currency_symbol = Column(String, default="₹")
+    currency_code = Column(String, default="INR")
+
+    source_page = Column(Integer, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -74,12 +104,20 @@ class MenuItem(Base):
     category = relationship("MenuCategory", back_populates="items")
 
 
+# ─────────────────────────────────────────────
+# 🔹 Upload Status Enum
+# ─────────────────────────────────────────────
+
 class ParseStatus(str, enum.Enum):
     pending = "pending"
     processing = "processing"
     done = "done"
     failed = "failed"
 
+
+# ─────────────────────────────────────────────
+# 🔹 Menu Upload
+# ─────────────────────────────────────────────
 
 class MenuUpload(Base):
     __tablename__ = "menu_uploads"
@@ -94,6 +132,10 @@ class MenuUpload(Base):
     restaurant = relationship("Restaurant", back_populates="menu_uploads")
 
 
+# ─────────────────────────────────────────────
+# 🔹 Onboarding Events
+# ─────────────────────────────────────────────
+
 class OnboardingEvent(Base):
     __tablename__ = "onboarding_events"
 
@@ -105,3 +147,4 @@ class OnboardingEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     restaurant = relationship("Restaurant", back_populates="onboarding_events")
+
