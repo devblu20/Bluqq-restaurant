@@ -42,11 +42,8 @@ export default function WhatsAppChatPage() {
 
   useEffect(() => {
     if (!restaurantId) return;
-
     getWhatsAppConfig(restaurantId)
-      .then((res) => {
-        setConfig((prev) => ({ ...prev, ...res.data }));
-      })
+      .then((res) => setConfig((prev) => ({ ...prev, ...res.data })))
       .catch(() => toast.error("Failed to load WhatsApp config"))
       .finally(() => setLoading(false));
   }, [restaurantId]);
@@ -71,7 +68,6 @@ export default function WhatsAppChatPage() {
       toast.error("Phone and message are required");
       return;
     }
-
     setSending(true);
     try {
       const res = await simulateWhatsAppMessage(restaurantId, {
@@ -85,7 +81,9 @@ export default function WhatsAppChatPage() {
         if (res.data.sent_to_whatsapp) {
           toast.success("Reply sent to customer WhatsApp");
         } else {
-          const detail = res.data.meta_error ? String(res.data.meta_error).slice(0, 220) : "Check phone_number_id/access_token.";
+          const detail = res.data.meta_error
+            ? String(res.data.meta_error).slice(0, 220)
+            : "Check phone_number_id/access_token.";
           toast.error(`Could not send to WhatsApp. ${detail}`);
         }
       }
@@ -98,150 +96,186 @@ export default function WhatsAppChatPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={34} />
+      <div style={styles.loadingScreen}>
+        <Loader2 style={{ color: "#2d6a4f", animation: "spin 1s linear infinite" }} size={34} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div style={styles.page}>
+      <div style={styles.container}>
+
+        {/* Header */}
+        <div style={styles.header}>
           <div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-              <Link href="/restaurant/dashboard" className="hover:text-orange-500 inline-flex items-center gap-1">
-                <ArrowLeft size={14} />
-                Back
-              </Link>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageCircle className="text-orange-500" size={24} />
+            <Link href="/restaurant/dashboard" style={styles.backLink}>
+              <ArrowLeft size={14} />
+              Back
+            </Link>
+            <h1 style={styles.pageTitle}>
+              <span style={styles.titleIcon}><MessageCircle size={22} /></span>
               WhatsApp AI Waiter
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Configure your WhatsApp line and test AI waiter replies for {restaurant?.name}
+            <p style={styles.subtitle}>
+              Configure your WhatsApp line and test AI waiter replies for{" "}
+              <strong>{restaurant?.name}</strong>
             </p>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary flex items-center gap-2"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          <button onClick={handleSave} disabled={saving} style={styles.primaryBtn}>
+            {saving ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={15} />}
             Save Config
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card space-y-4">
-            <h2 className="font-bold text-gray-900">WhatsApp Configuration</h2>
+        {/* Two-column grid */}
+        <div style={styles.grid}>
 
-            <label className="label">Business Phone</label>
-            <input
-              className="input-field"
-              value={config.business_phone || ""}
-              onChange={(e) => setConfig({ ...config, business_phone: e.target.value })}
-              placeholder="+91..."
-            />
+          {/* LEFT — Configuration */}
+          <div style={styles.card}>
+            <div style={styles.cardHeader}>
+              <span style={{ ...styles.cardDot, background: "#2d6a4f" }} />
+              <h2 style={styles.cardTitle}>WhatsApp Configuration</h2>
+            </div>
 
-            <label className="label">Phone Number ID (Meta)</label>
-            <input
-              className="input-field"
-              value={config.phone_number_id || ""}
-              onChange={(e) => setConfig({ ...config, phone_number_id: e.target.value })}
-              placeholder="Meta phone_number_id"
-            />
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Business Phone</label>
+              <input
+                style={styles.input}
+                value={config.business_phone || ""}
+                onChange={(e) => setConfig({ ...config, business_phone: e.target.value })}
+                placeholder="+91..."
+              />
+            </div>
 
-            <label className="label">Access Token</label>
-            <input
-              className="input-field"
-              value={config.access_token || ""}
-              onChange={(e) => setConfig({ ...config, access_token: e.target.value })}
-              placeholder="Permanent token"
-            />
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Phone Number ID (Meta)</label>
+              <input
+                style={styles.input}
+                value={config.phone_number_id || ""}
+                onChange={(e) => setConfig({ ...config, phone_number_id: e.target.value })}
+                placeholder="Meta phone_number_id"
+              />
+            </div>
 
-            <label className="label">Verify Token</label>
-            <input
-              className="input-field"
-              value={config.verify_token || ""}
-              onChange={(e) => setConfig({ ...config, verify_token: e.target.value })}
-              placeholder="Webhook verify token"
-            />
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Access Token</label>
+              <input
+                style={styles.input}
+                value={config.access_token || ""}
+                onChange={(e) => setConfig({ ...config, access_token: e.target.value })}
+                placeholder="Permanent token"
+                type="password"
+              />
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Tone</label>
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Verify Token</label>
+              <input
+                style={styles.input}
+                value={config.verify_token || ""}
+                onChange={(e) => setConfig({ ...config, verify_token: e.target.value })}
+                placeholder="Webhook verify token"
+              />
+            </div>
+
+            <div style={styles.row}>
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Tone</label>
                 <select
-                  className="input-field"
+                  style={styles.input}
                   value={config.tone || "friendly"}
                   onChange={(e) => setConfig({ ...config, tone: e.target.value })}
                 >
-                  <option value="friendly">friendly</option>
-                  <option value="premium">premium</option>
-                  <option value="casual">casual</option>
+                  <option value="friendly">Friendly</option>
+                  <option value="premium">Premium</option>
+                  <option value="casual">Casual</option>
                 </select>
               </div>
-
-              <div>
-                <label className="label">Language</label>
-                <input
-                  className="input-field"
-                  value="english"
-                  disabled
-                  readOnly
-                />
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Language</label>
+                <input style={{ ...styles.input, opacity: 0.6, cursor: "not-allowed" }} value="English" disabled readOnly />
               </div>
             </div>
 
-            <label className="label">Custom Prompt</label>
-            <textarea
-              className="input-field resize-none"
-              rows={4}
-              value={config.custom_prompt || ""}
-              onChange={(e) => setConfig({ ...config, custom_prompt: e.target.value })}
-              placeholder="Extra waiter personality rules..."
-            />
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={!!config.is_active}
-                onChange={(e) => setConfig({ ...config, is_active: e.target.checked })}
-                className="w-4 h-4 accent-orange-500"
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Custom Prompt</label>
+              <textarea
+                style={{ ...styles.input, resize: "none", height: 96 }}
+                rows={4}
+                value={config.custom_prompt || ""}
+                onChange={(e) => setConfig({ ...config, custom_prompt: e.target.value })}
+                placeholder="Extra waiter personality rules..."
               />
-              <span className="text-sm text-gray-700">Webhook replies active</span>
+            </div>
+
+            <label style={styles.checkboxRow}>
+              <div style={{ ...styles.toggle, background: config.is_active ? "#2d6a4f" : "#d1d5db" }}>
+                <input
+                  type="checkbox"
+                  checked={!!config.is_active}
+                  onChange={(e) => setConfig({ ...config, is_active: e.target.checked })}
+                  style={{ display: "none" }}
+                />
+                <div style={{
+                  ...styles.toggleKnob,
+                  transform: config.is_active ? "translateX(20px)" : "translateX(2px)",
+                }} />
+              </div>
+              <span style={styles.checkLabel}>Webhook replies active</span>
             </label>
           </div>
 
-          <div className="card flex flex-col">
-            <h2 className="font-bold text-gray-900 mb-3">Test AI Waiter Chat</h2>
+          {/* RIGHT — Chat Test */}
+          <div style={{ ...styles.card, display: "flex", flexDirection: "column" }}>
+            <div style={styles.cardHeader}>
+              <span style={{ ...styles.cardDot, background: "#40916c" }} />
+              <h2 style={styles.cardTitle}>Test AI Waiter Chat</h2>
+            </div>
 
-            <label className="label">Customer Phone</label>
-            <input
-              className="input-field mb-3"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="+91..."
-            />
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Customer Phone</label>
+              <input
+                style={styles.input}
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="+91..."
+              />
+            </div>
 
-            <div className="flex-1 min-h-[320px] max-h-[420px] overflow-auto border border-gray-100 rounded-xl p-3 bg-gray-50 space-y-2">
+            {/* Message list */}
+            <div style={styles.chatBox}>
               {messages.length === 0 ? (
-                <p className="text-sm text-gray-400">No messages yet. Send a test message below.</p>
+                <div style={styles.emptyChat}>
+                  <MessageCircle size={28} style={{ color: "#b7e4c7", marginBottom: 8 }} />
+                  <p style={{ margin: 0, fontSize: 13, color: "#95c1a8" }}>
+                    No messages yet. Send a test message below.
+                  </p>
+                </div>
               ) : (
                 messages.map((m, idx) => (
                   <div
                     key={`${m.created_at || idx}-${idx}`}
-                    className={`flex ${m.direction === "incoming" ? "justify-end" : "justify-start"}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: m.direction === "incoming" ? "flex-end" : "flex-start",
+                      marginBottom: 8,
+                    }}
                   >
                     <div
-                      className={`max-w-[82%] px-3 py-2 rounded-xl text-sm shadow-sm ${
-                        m.direction === "incoming"
-                          ? "bg-orange-500 text-white"
-                          : "bg-white text-gray-800 border border-gray-100"
-                      }`}
+                      style={{
+                        maxWidth: "80%",
+                        padding: "8px 12px",
+                        borderRadius: 14,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        background: m.direction === "incoming" ? "#2d6a4f" : "#ffffff",
+                        color: m.direction === "incoming" ? "#ffffff" : "#1b4332",
+                        border: m.direction === "incoming" ? "none" : "1px solid #d8f3dc",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                      }}
                     >
-                      <div className="flex items-center gap-1 mb-1 text-[10px] opacity-80">
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4, fontSize: 10, opacity: 0.7 }}>
                         {m.direction === "incoming" ? <User size={10} /> : <Bot size={10} />}
                         {m.direction}
                       </div>
@@ -252,51 +286,299 @@ export default function WhatsAppChatPage() {
               )}
             </div>
 
-            <div className="mt-3 flex gap-2">
+            {/* Input row */}
+            <div style={styles.inputRow}>
               <input
-                className="input-field"
+                style={{ ...styles.input, flex: 1, marginBottom: 0 }}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type customer message"
+                placeholder="Type customer message…"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleSend();
-                  }
+                  if (e.key === "Enter") { e.preventDefault(); handleSend(); }
                 }}
               />
-              <button
-                onClick={handleSend}
-                disabled={sending}
-                className="btn-primary flex items-center gap-2"
-              >
-                {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+              <button onClick={handleSend} disabled={sending} style={styles.sendBtn}>
+                {sending ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={15} />}
                 Send
               </button>
             </div>
 
-            <label className="mt-3 flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={sendToWhatsApp}
-                onChange={(e) => setSendToWhatsApp(e.target.checked)}
-                className="w-4 h-4 accent-orange-500"
-              />
-              <span className="text-sm text-gray-700">Also send AI reply to real customer WhatsApp</span>
+            <label style={{ ...styles.checkboxRow, marginTop: 10 }}>
+              <div style={{ ...styles.toggle, background: sendToWhatsApp ? "#2d6a4f" : "#d1d5db" }}>
+                <input
+                  type="checkbox"
+                  checked={sendToWhatsApp}
+                  onChange={(e) => setSendToWhatsApp(e.target.checked)}
+                  style={{ display: "none" }}
+                />
+                <div style={{
+                  ...styles.toggleKnob,
+                  transform: sendToWhatsApp ? "translateX(20px)" : "translateX(2px)",
+                }} />
+              </div>
+              <span style={styles.checkLabel}>Also send AI reply to real customer WhatsApp</span>
             </label>
           </div>
         </div>
 
-        <div className="card text-sm text-gray-600">
-          <p className="font-semibold text-gray-800 mb-2">Webhook URL (Meta Setup)</p>
-          <p>
-            Set callback URL to <span className="font-mono text-xs">{`https://your-api-domain/whatsapp/webhook`}</span>
+        {/* Webhook info */}
+        <div style={styles.infoCard}>
+          <p style={styles.infoTitle}>Webhook URL (Meta Setup)</p>
+          <p style={styles.infoText}>
+            Set callback URL to{" "}
+            <code style={styles.code}>https://your-api-domain/whatsapp/webhook</code>
           </p>
-          <p className="mt-1">
-            Verification token uses env <span className="font-mono text-xs">WHATSAPP_WEBHOOK_VERIFY_TOKEN</span> or default <span className="font-mono text-xs">restaurant_webhook_verify</span>.
+          <p style={{ ...styles.infoText, marginTop: 4 }}>
+            Verification token uses env{" "}
+            <code style={styles.code}>WHATSAPP_WEBHOOK_VERIFY_TOKEN</code> or default{" "}
+            <code style={styles.code}>restaurant_webhook_verify</code>.
           </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input:focus, select:focus, textarea:focus { outline: 2px solid #40916c; outline-offset: -1px; }
+        button:hover:not(:disabled) { filter: brightness(1.08); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        * { box-sizing: border-box; }
+      `}</style>
     </div>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f0f7f4",
+    padding: "32px 16px",
+    fontFamily: "'Inter', 'Segoe UI', sans-serif",
+  },
+  container: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+  },
+  loadingScreen: {
+    minHeight: "100vh",
+    background: "#f0f7f4",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  header: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  backLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 12,
+    color: "#40916c",
+    textDecoration: "none",
+    marginBottom: 6,
+    fontWeight: 500,
+  },
+  pageTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    margin: 0,
+    fontSize: 22,
+    fontWeight: 700,
+    color: "#1b4332",
+  },
+  titleIcon: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 36,
+    height: 36,
+    background: "#d8f3dc",
+    borderRadius: 10,
+    color: "#2d6a4f",
+  },
+  subtitle: {
+    margin: "4px 0 0",
+    fontSize: 13,
+    color: "#52796f",
+  },
+  primaryBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "10px 20px",
+    background: "#2d6a4f",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    transition: "filter 0.15s",
+  },
+  sendBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "10px 18px",
+    background: "#2d6a4f",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    transition: "filter 0.15s",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 20,
+  },
+  card: {
+    background: "#ffffff",
+    borderRadius: 16,
+    padding: 24,
+    border: "1px solid #d8f3dc",
+    boxShadow: "0 2px 8px rgba(45,106,79,0.06)",
+  },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 20,
+  },
+  cardDot: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+  cardTitle: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 700,
+    color: "#1b4332",
+  },
+  fieldGroup: {
+    marginBottom: 14,
+  },
+  label: {
+    display: "block",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#52796f",
+    marginBottom: 5,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  },
+  input: {
+    width: "100%",
+    padding: "9px 12px",
+    border: "1px solid #d8f3dc",
+    borderRadius: 9,
+    fontSize: 13,
+    color: "#1b4332",
+    background: "#f8fdf9",
+    transition: "outline 0.15s",
+    fontFamily: "inherit",
+  },
+  row: {
+    display: "flex",
+    gap: 12,
+    marginBottom: 14,
+  },
+  checkboxRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    cursor: "pointer",
+    marginTop: 6,
+  },
+  toggle: {
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    position: "relative",
+    transition: "background 0.2s",
+    flexShrink: 0,
+    cursor: "pointer",
+  },
+  toggleKnob: {
+    position: "absolute",
+    top: 2,
+    width: 20,
+    height: 20,
+    borderRadius: "50%",
+    background: "#fff",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+    transition: "transform 0.2s",
+  },
+  checkLabel: {
+    fontSize: 13,
+    color: "#374151",
+    userSelect: "none",
+  },
+  chatBox: {
+    flex: 1,
+    minHeight: 300,
+    maxHeight: 400,
+    overflowY: "auto",
+    background: "#f8fdf9",
+    border: "1px solid #d8f3dc",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    display: "flex",
+    flexDirection: "column",
+  },
+  emptyChat: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    padding: 20,
+  },
+  inputRow: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+  },
+  infoCard: {
+    background: "#ffffff",
+    borderRadius: 14,
+    padding: "16px 20px",
+    border: "1px solid #d8f3dc",
+    boxShadow: "0 1px 4px rgba(45,106,79,0.05)",
+  },
+  infoTitle: {
+    margin: "0 0 6px",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#1b4332",
+  },
+  infoText: {
+    margin: 0,
+    fontSize: 12,
+    color: "#52796f",
+    lineHeight: 1.6,
+  },
+  code: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    background: "#d8f3dc",
+    padding: "1px 5px",
+    borderRadius: 4,
+    color: "#1b4332",
+  },
+};

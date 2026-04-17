@@ -3,6 +3,7 @@ import os
 import random
 import re
 import time
+from difflib import SequenceMatcher
 from urllib import request as urlrequest
 from urllib.error import HTTPError
 
@@ -457,7 +458,7 @@ def _is_modify_order_intent(msg: str) -> bool:
 
 
 def _is_add_more_intent(msg: str) -> bool:
-    return any(k in msg for k in [
+    if any(k in msg for k in [
         "order more", "add more", "add another", "another order", "more items",
         "i want to order more", "i want more", "add item", "i want to add",
         "also add", "add this also", "add that also", "also want to add",
@@ -466,7 +467,14 @@ def _is_add_more_intent(msg: str) -> bool:
         "add some more", "add few more", "something else", "anything else to add",
         "and i want to order more", "and want to order more",
         "and also want", "and i also want",
-    ])
+    ]):
+        return True
+
+    # Handle natural trailing phrasing like "5 paneer momos also".
+    if re.search(r"\b(also|too|as well)\b", msg) and _extract_qty(msg) is not None:
+        return True
+
+    return False
 
 
 # ── KEY FIX: Parse "Name + add more" in a single message ─────────────────────
@@ -729,15 +737,30 @@ def _find_best_item_match(message: str, items):
             continue
         name_tokens = {t for t in re.findall(r"[a-zA-Z]+", name) if len(t) > 2}
         overlap = len(msg_tokens & name_tokens)
-        if overlap > 0:
-            scored.append((overlap, len(name_tokens), item))
+
+        # Fuzzy token overlap to catch misspellings like panner -> paneer.
+        fuzzy_overlap = 0
+        for mt in msg_tokens:
+            best_ratio = 0.0
+            for nt in name_tokens:
+                ratio = SequenceMatcher(None, mt, nt).ratio()
+                if ratio > best_ratio:
+                    best_ratio = ratio
+            if best_ratio >= 0.78:
+                fuzzy_overlap += 1
+
+        # Whole phrase similarity is a useful tie-breaker when token overlap is weak.
+        phrase_ratio = SequenceMatcher(None, msg, name).ratio()
+        combined = max(overlap, fuzzy_overlap)
+        if combined > 0 or phrase_ratio >= 0.72:
+            scored.append((combined, phrase_ratio, -len(name_tokens), item))
 
     if exact:
         return exact[0]
     if scored:
-        scored.sort(key=lambda x: (x[0], -x[1]), reverse=True)
-        best_overlap, _, best_item = scored[0]
-        if best_overlap >= 2:
+        scored.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+        best_overlap, best_phrase_ratio, _, best_item = scored[0]
+        if best_overlap >= 2 or (best_overlap >= 1 and best_phrase_ratio >= 0.72):
             return best_item
     return None
 
