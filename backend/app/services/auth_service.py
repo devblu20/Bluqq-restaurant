@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey_change_in_production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "onboarding@resend.dev")  # change to your verified domain in prod
+FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@bluqq.com")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 resend.api_key = RESEND_API_KEY
@@ -71,7 +71,7 @@ def generate_verification_code() -> str:
 def send_verification_email(to_email: str, restaurant_name: str, code: str) -> bool:
     try:
         resend.Emails.send({
-            "from": FROM_EMAIL,
+            "from": f"Bluqq <{FROM_EMAIL}>",
             "to": [to_email],
             "subject": "Verify your Bluqq account",
             "html": f"""
@@ -121,7 +121,15 @@ def signup(db: Session, data: SignupRequest) -> dict:
     db.commit()
     db.refresh(restaurant)
 
-    send_verification_email(restaurant.email, restaurant.name, code)
+    # ✅ Rollback if email fails — prevents ghost accounts
+    email_sent = send_verification_email(restaurant.email, restaurant.name, code)
+    if not email_sent:
+        db.delete(restaurant)
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send verification email. Please try again."
+        )
 
     return {
         "message": "Signup successful. Please check your email for the verification code.",
