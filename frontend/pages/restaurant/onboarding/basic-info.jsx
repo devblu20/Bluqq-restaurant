@@ -4,12 +4,12 @@ import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { getRestaurant, updateRestaurant } from "../../../services/api";
 import OnboardingLayout from "../../../components/OnboardingLayout";
-import { Loader2, ArrowRight, UtensilsCrossed } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 
 const BUSINESS_TYPES = [
-  { value: "dine_in",   label: "Dine-In",   emoji: "🍽️" },
-  { value: "takeaway",  label: "Takeaway",  emoji: "🥡" },
-  { value: "delivery",  label: "Delivery",  emoji: "🛵" },
+  { value: "dine_in",  label: "Dine-In",  emoji: "🍽️" },
+  { value: "takeaway", label: "Takeaway", emoji: "🥡" },
+  { value: "delivery", label: "Delivery", emoji: "🛵" },
 ];
 
 export default function BasicInfoStep() {
@@ -18,25 +18,46 @@ export default function BasicInfoStep() {
   const [fetching, setFetching] = useState(true);
   const [selected, setSelected] = useState([]);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: { name: "", owner_name: "", phone: "", city: "", business_type: [] }
   });
 
   const loadData = useCallback(async () => {
-    const id = localStorage.getItem("restaurant_id");
-    if (!id) { router.replace("/restaurant/login"); return; }
+    // ✅ SSR guard — localStorage server pe exist nahi karta
+    if (typeof window === "undefined") return;
+
+    const id    = localStorage.getItem("restaurant_id");
+    const token = localStorage.getItem("token");
+
+    console.log("🔍 restaurant_id:", id);
+    console.log("🔍 token:", token ? "EXISTS" : "MISSING");
+
+    if (!id || !token) {
+      console.warn("❌ Missing id or token — redirecting to login");
+      router.replace("/restaurant/login");
+      return;
+    }
+
     try {
-      const res = await getRestaurant(id);
+      const res  = await getRestaurant(id);
       const data = res.data;
+
       if (data.business_type && typeof data.business_type === "string") {
         data.business_type = data.business_type.split(",").map(s => s.trim());
       } else if (!data.business_type) {
         data.business_type = [];
       }
+
       setSelected(data.business_type || []);
       reset(data);
     } catch (err) {
-      console.error("Failed to load restaurant:", err);
+      console.error("❌ getRestaurant failed:", err.response?.status, err.response?.data);
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        router.replace("/restaurant/login");
+      } else {
+        toast.error("Failed to load restaurant data.");
+      }
     } finally {
       setFetching(false);
     }
@@ -59,14 +80,14 @@ export default function BasicInfoStep() {
     const id = localStorage.getItem("restaurant_id");
     try {
       await updateRestaurant(id, {
-        name: data.name,
-        owner_name: data.owner_name,
-        phone: data.phone,
-        city: data.city,
+        name:          data.name,
+        owner_name:    data.owner_name,
+        phone:         data.phone,
+        city:          data.city,
         business_type: selected.join(","),
       });
       toast.success("Basic info saved!");
-      router.push("/restaurant/onboarding/operations");
+      await router.push("/restaurant/onboarding/operations");
     } catch (err) {
       const errorMsg = err.response?.data?.detail;
       if (Array.isArray(errorMsg)) {
@@ -88,8 +109,7 @@ export default function BasicInfoStep() {
     .bi-wrap { font-family: 'Inter', sans-serif; animation: fadeUp 0.4s ease both; }
 
     .bi-card {
-      background: white;
-      border-radius: 22px;
+      background: white; border-radius: 22px;
       border: 1.5px solid #dceee3;
       box-shadow: 0 4px 24px rgba(26,107,58,0.07);
       padding: 32px;
@@ -203,7 +223,6 @@ export default function BasicInfoStep() {
         <div className="bi-card">
           <form onSubmit={handleSubmit(onSubmit)}>
 
-            {/* ── Restaurant Details ── */}
             <p className="bi-section-label">Restaurant details</p>
             <div className="bi-field-row">
               <div>
@@ -235,7 +254,6 @@ export default function BasicInfoStep() {
               </div>
             </div>
 
-            {/* ── Business Type ── */}
             <p className="bi-section-label">Business type</p>
             <div className="bi-type-grid" style={{ marginBottom: 24 }}>
               {BUSINESS_TYPES.map((t) => {
@@ -261,7 +279,6 @@ export default function BasicInfoStep() {
               </p>
             )}
 
-            {/* ── Submit ── */}
             <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1.5px solid #edf6f0", paddingTop: 20 }}>
               <button type="submit" disabled={loading} className="bi-submit-btn">
                 {loading

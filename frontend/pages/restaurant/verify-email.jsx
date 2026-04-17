@@ -58,39 +58,34 @@ export default function VerifyEmailPage() {
   };
 
   const handleVerify = async () => {
-  const code = digits.join("");
+    const code = digits.join("");
+    if (code.length < 6) {
+      toast.error("Please enter all 6 digits");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/restaurant/auth/verify-email`, { email, code });
 
-  if (code.length < 6) {
-    toast.error("Please enter all 6 digits");
-    return;
-  }
+      // ✅ Save to localStorage
+      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("restaurant_id", res.data.restaurant_id);
+      localStorage.removeItem("pending_email");
 
-  setLoading(true);
+      toast.success("Email verified! Welcome to Bluqq 🎉");
 
-  try {
-    const res = await axios.post(`${API_BASE}/restaurant/auth/verify-email`, { email, code });
+      // ✅ Small delay taaki localStorage flush ho jaye before next page loads
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await router.push("/restaurant/onboarding/basic-info");
 
-    // ✅ Save data
-    localStorage.setItem("token", res.data.access_token);
-    localStorage.setItem("restaurant_id", res.data.restaurant_id);
-    localStorage.removeItem("pending_email");
-
-    // ✅ Show success
-    toast.success("Email verified! Welcome to Bluqq 🎉");
-
-    // ✅ Single redirect (with slight delay)
-    setTimeout(() => {
-      router.push("/restaurant/onboarding/basic-info");
-    }, 100);
-
-  } catch (err) {
-    toast.error(err.response?.data?.detail || "Verification failed. Try again.");
-    setDigits(["", "", "", "", "", ""]);
-    setTimeout(() => inputRefs.current[0]?.focus(), 100);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Verification failed. Try again.");
+      setDigits(["", "", "", "", "", ""]);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResend = async () => {
     setResending(true);
@@ -305,8 +300,6 @@ export default function VerifyEmailPage() {
 
       <div className="verify-wrap">
         <div className="verify-card">
-
-          {/* Hero */}
           <div className="verify-hero">
             <div className="hero-badge">✉ Email verification</div>
             <div className="hero-icon-box">
@@ -317,7 +310,6 @@ export default function VerifyEmailPage() {
             <div className="email-chip">{email || "your email"}</div>
           </div>
 
-          {/* Body */}
           <div className="verify-body">
             <label className="field-label">Enter verification code</label>
 
@@ -378,7 +370,6 @@ export default function VerifyEmailPage() {
               <Link href="/restaurant/signup">Back to signup</Link>
             </p>
           </div>
-
         </div>
       </div>
     </>
