@@ -10,3 +10,10 @@ from app.schemas.menu import (
     MenuItemCreate, MenuItemUpdate, MenuItemResponse,
     MenuUploadResponse, GoLiveCheckResponse,
 )
+from app.schemas.whatsapp import (
+    WhatsAppConfigUpdate,
+    WhatsAppConfigResponse,
+    WhatsAppSimulateRequest,
+    WhatsAppSimulateResponse,
+    WhatsAppMessageItem,
+)

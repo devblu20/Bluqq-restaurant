@@ -1,4 +1,3 @@
-import anthropic
 import base64
 import json
 import os
@@ -15,6 +14,11 @@ def scan_and_save(db: Session, restaurant_id: str, img_bytes: bytes, mime: str):
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return {"error": "ANTHROPIC_API_KEY not found"}
+
+    try:
+        import anthropic
+    except ImportError:
+        return {"error": "anthropic package is not installed"}
 
     client = anthropic.Anthropic(api_key=api_key)
     b64 = base64.standard_b64encode(img_bytes).decode("utf-8")

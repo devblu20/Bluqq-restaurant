@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://bluqq-restaurant-production.up.railway.app";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -45,6 +45,8 @@ export const updateRestaurant = (id, data) => api.patch(`/restaurants/${id}`, da
 
 export const createProfile = (id, data) => api.post(`/restaurants/${id}/profile`, data);
 export const updateProfile = (id, data) => api.patch(`/restaurants/${id}/profile`, data);
+export const getRestaurantProfile = (id) => api.get(`/restaurants/${id}`);
+export const updateRestaurantProfile = (id, data) => api.post(`/restaurants/${id}/profile`, data);
 
 export const getOrderSettings = (id) => api.get(`/restaurants/${id}/order-settings`);
 export const createOrderSettings = (id, data) => api.post(`/restaurants/${id}/order-settings`, data);
@@ -82,5 +84,15 @@ export const scanMenuImages = uploadMenuImage;
  */
 export const importScan = (id, scanData) =>
   api.post(`/restaurants/${id}/menu/import-scan`, scanData);
+
+// --- WhatsApp AI Waiter Endpoints ---
+export const getWhatsAppConfig = (id) => api.get(`/restaurants/${id}/whatsapp/config`);
+export const updateWhatsAppConfig = (id, data) => api.patch(`/restaurants/${id}/whatsapp/config`, data);
+export const simulateWhatsAppMessage = (id, data) => api.post(`/restaurants/${id}/whatsapp/simulate`, data);
+
+// Backward-compatible grouped API object used by legacy components
+export const menuAPI = {
+  importScan,
+};
 
 export default api;

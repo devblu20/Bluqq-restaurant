@@ -12,7 +12,6 @@ from app.services import menu_service, menu_scan_service
 from app.models.menu import MenuCategory, MenuItem
 from typing import List, Optional
 from pydantic import BaseModel
-import anthropic
 import base64
 import json
 import os

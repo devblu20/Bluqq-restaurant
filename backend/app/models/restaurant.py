@@ -45,3 +45,6 @@ class Restaurant(Base):
     menu_items = relationship("MenuItem", back_populates="restaurant")
     onboarding_events = relationship("OnboardingEvent", back_populates="restaurant")
     menu_uploads = relationship("MenuUpload", back_populates="restaurant")
+    whatsapp_config = relationship("RestaurantWhatsappConfig", back_populates="restaurant", uselist=False)
+    whatsapp_conversations = relationship("WhatsAppConversation", back_populates="restaurant")
+    whatsapp_messages = relationship("WhatsAppMessage", back_populates="restaurant")

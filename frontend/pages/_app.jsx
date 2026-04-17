@@ -1,11 +1,5 @@
 import "../styles/globals.css";
 import { Toaster } from "react-hot-toast";
-import { supabase } from '../services/supabase'
-
-// Example: fetch restaurants table
-const { data, error } = await supabase
-  .from('restaurants')
-  .select('*')
 
 export default function App({ Component, pageProps }) {
   return (

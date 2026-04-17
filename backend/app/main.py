@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routers import auth, restaurants, menu
+from app.routers import auth, restaurants, menu, whatsapp
 
 # IMPORTANT: models import BEFORE create_all
 from app import models
@@ -42,6 +42,7 @@ def startup():
 app.include_router(auth.router, prefix="/restaurant/auth", tags=["Auth"])
 app.include_router(restaurants.router, prefix="/restaurants", tags=["Restaurants"])
 app.include_router(menu.router, prefix="/restaurants", tags=["Menu"])
+app.include_router(whatsapp.router, tags=["WhatsApp"])
 
 
 # ✅ Root route

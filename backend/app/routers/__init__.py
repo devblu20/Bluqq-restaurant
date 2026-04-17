@@ -1,1 +1,1 @@
-from app.routers import auth, restaurants, menu
+from app.routers import auth, restaurants, menu, whatsapp

@@ -8,4 +8,9 @@ from app.models.menu import (
     OnboardingEvent,
     ParseStatus,
 )
+from app.models.whatsapp import (
+    RestaurantWhatsappConfig,
+    WhatsAppConversation,
+    WhatsAppMessage,
+)
 
