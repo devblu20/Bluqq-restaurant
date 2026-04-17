@@ -58,27 +58,39 @@ export default function VerifyEmailPage() {
   };
 
   const handleVerify = async () => {
-    const code = digits.join("");
-    if (code.length < 6) {
-      toast.error("Please enter all 6 digits");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API_BASE}/restaurant/auth/verify-email`, { email, code });
-      localStorage.setItem("token", res.data.access_token);
-      localStorage.setItem("restaurant_id", res.data.restaurant_id);
-      localStorage.removeItem("pending_email");
-      toast.success("Email verified! Welcome to Bluqq 🎉");
+  const code = digits.join("");
+
+  if (code.length < 6) {
+    toast.error("Please enter all 6 digits");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const res = await axios.post(`${API_BASE}/restaurant/auth/verify-email`, { email, code });
+
+    // ✅ Save data
+    localStorage.setItem("token", res.data.access_token);
+    localStorage.setItem("restaurant_id", res.data.restaurant_id);
+    localStorage.removeItem("pending_email");
+
+    // ✅ Show success
+    toast.success("Email verified! Welcome to Bluqq 🎉");
+
+    // ✅ Single redirect (with slight delay)
+    setTimeout(() => {
       router.push("/restaurant/onboarding/basic-info");
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Verification failed. Try again.");
-      setDigits(["", "", "", "", "", ""]);
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, 100);
+
+  } catch (err) {
+    toast.error(err.response?.data?.detail || "Verification failed. Try again.");
+    setDigits(["", "", "", "", "", ""]);
+    setTimeout(() => inputRefs.current[0]?.focus(), 100);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResend = async () => {
     setResending(true);
