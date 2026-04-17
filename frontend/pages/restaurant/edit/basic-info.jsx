@@ -135,7 +135,7 @@ export default function EditBasicInfoPage() {
           .biz-label.checked {
             border-color: #1a6b3a;
             background: #e6f4ec;
-            box-shadow: 0 0 0 3px rgba(26,107,58,0.08);
+            box-shadow:  0 3px rgba(26,107,58,0.08);
           }
           .biz-checkbox {
             width: 18px; height: 18px;
