@@ -5,7 +5,7 @@ import string
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 
 import resend
@@ -49,7 +49,7 @@ def get_password_hash(password: str) -> str:
 # ✅ JWT token create
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -100,7 +100,7 @@ def signup(db: Session, data: SignupRequest) -> dict:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     code = generate_verification_code()
-    expires = datetime.utcnow() + timedelta(minutes=15)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     restaurant = Restaurant(
         name=data.name,
@@ -147,7 +147,7 @@ def verify_email(db: Session, email: str, code: str) -> AuthResponse:
         raise HTTPException(status_code=400, detail="Email is already verified")
     if restaurant.verification_code != code:
         raise HTTPException(status_code=400, detail="Invalid verification code")
-    if datetime.utcnow() > restaurant.verification_code_expires:
+    if datetime.now(timezone.utc) > restaurant.verification_code_expires:
         raise HTTPException(status_code=400, detail="Verification code has expired")
 
     # ✅ Mark verified & clear OTP fields
@@ -171,7 +171,7 @@ def resend_verification_code(db: Session, email: str) -> dict:
         raise HTTPException(status_code=400, detail="Email is already verified")
 
     code = generate_verification_code()
-    expires = datetime.utcnow() + timedelta(minutes=15)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     restaurant.verification_code = code
     restaurant.verification_code_expires = expires
