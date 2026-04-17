@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Loader2, ArrowRight, MailCheck } from "lucide-react";
-import axios from "axios";
+import api from "@/services/api"; // adjust path if needed
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -65,7 +65,7 @@ export default function VerifyEmailPage() {
     }
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/restaurant/auth/verify-email`, { email, code });
+      const res = await api.post("/restaurant/auth/verify-email", { email, code });
 
       // ✅ Save to localStorage
       localStorage.setItem("token", res.data.access_token);
@@ -90,7 +90,7 @@ export default function VerifyEmailPage() {
   const handleResend = async () => {
     setResending(true);
     try {
-      await axios.post(`${API_BASE}/restaurant/auth/resend-verification`, { email });
+      await api.post("/restaurant/auth/resend-verification", { email });
       setCountdown(900);
       setDigits(["", "", "", "", "", ""]);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
