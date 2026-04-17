@@ -125,7 +125,13 @@ def _get_recent_conversation_context(db: Session, restaurant_id: str, customer_p
     return "\n".join(lines)
 
 
-def _build_waiter_prompt(db: Session, restaurant_id: str, customer_phone: str, customer_message: str, cfg: RestaurantWhatsappConfig) -> str:
+def _build_waiter_prompt(
+    db: Session,
+    restaurant_id: str,
+    customer_phone: str,
+    customer_message: str,
+    cfg: RestaurantWhatsappConfig,
+) -> str:
     restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
     items = (
         db.query(MenuItem)
@@ -140,10 +146,8 @@ def _build_waiter_prompt(db: Session, restaurant_id: str, customer_phone: str, c
         menu_lines.append(f"- {item.name} (Rs {price})")
 
     menu_text = "\n".join(menu_lines) if menu_lines else "- Menu not configured yet"
-
     custom = (cfg.custom_prompt or "").strip()
     custom_block = f"\nCustom style: {custom}" if custom else ""
-
     convo = _get_recent_conversation_context(db, restaurant_id, customer_phone)
     restaurant_name = restaurant.name if restaurant else "this restaurant"
 
@@ -178,42 +182,29 @@ def _normalize_text(text: str) -> str:
 
 
 def _is_affirmative(text: str) -> bool:
-    """
-    FIX: Expanded to catch natural confirmations like
-    'okay let's add this to cart', 'add this to cart', 'let's add', 'add it', etc.
-    """
     msg = _normalize_text(text)
 
-    # Extended affirmative phrases
     yes_phrases = {
         "yes", "y", "ok", "okay", "sure", "done", "confirm",
         "go ahead", "place it", "place order", "order it",
-        # Cart / add confirmations
         "add this to cart", "add to cart", "add it to cart",
         "okay let's add this to cart", "ok let's add this to cart",
         "let's add", "lets add", "add it", "add this",
         "yeah", "yep", "yup", "absolutely", "definitely",
         "sounds good", "that's fine", "that's correct",
         "correct", "right", "perfect", "great",
-        "haan", "ha", "bilkul",  # Hinglish affirmatives
+        "haan", "ha", "bilkul",
     }
 
     if msg in yes_phrases:
         return True
-
-    # Check if message starts with an affirmative word/phrase
     for phrase in yes_phrases:
         if msg.startswith(phrase + " ") or msg == phrase:
             return True
-
-    # Pattern: "okay/ok/yes + let's/lets + [add/confirm/go/place]"
     if re.search(r"\b(ok|okay|yes|sure|yeah)\b.*\b(add|confirm|go|place|order)\b", msg):
         return True
-
-    # Pattern: "add * to * cart" or "add * to order"
     if re.search(r"\badd\b.*(cart|order)", msg):
         return True
-
     return False
 
 
@@ -247,97 +238,66 @@ def _extract_people_count(text: str):
     return None
 
 
-# ── PARTY / CATERING INTENT ───────────────────────────────────────────────────
+# ── PARTY / CATERING ──────────────────────────────────────────────────────────
 def _is_party_catering_intent(text: str) -> bool:
     msg = _normalize_text(text)
-    party_keys = [
+    return any(k in msg for k in [
         "party", "catering", "event", "organize", "organise",
         "arrange", "bulk order", "large order", "group order",
-    ]
-    return any(k in msg for k in party_keys)
+    ])
 
 
 def _handle_party_intent(db: Session, restaurant_id: str, message: str, items) -> str:
-    """
-    When user says 'I want to organise a party for 100 people', respond helpfully:
-    ask which dishes they want, suggest top picks, and offer to help plan quantities.
-    """
     people_count = _extract_people_count(message)
     people_str = f"*{people_count} people*" if people_count else "your group"
-
-    top = items[:4]
-    top_names = ", ".join(i.name for i in top) if top else "our popular dishes"
+    top_names = ", ".join(i.name for i in items[:4]) if items else "our popular dishes"
 
     if people_count:
         return (
-            f"🎉 Great, we'd love to help you plan a party for {people_str}!\n\n"
-            f"Some popular choices are: {top_names}.\n\n"
-            "Tell me which dishes you'd like and I'll suggest the right quantities for your group size."
+            f"🎉 Love it! We'd be happy to arrange for {people_str}.\n"
+            f"Popular choices: {top_names}.\n"
+            "Tell me which dishes you'd like and I'll suggest the right quantities!"
         )
     return (
-        f"🎉 Happy to help you plan a party for {people_str}!\n\n"
-        f"Some popular choices are: {top_names}.\n\n"
-        "How many people are attending? I'll help you figure out quantities once you pick the dishes."
+        f"🎉 Happy to help plan something for {people_str}!\n"
+        f"Popular choices: {top_names}.\n"
+        "How many people are attending? I'll figure out quantities once you pick dishes."
     )
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def _is_quantity_suggestion_intent(text: str) -> bool:
     msg = _normalize_text(text)
     keys = [
-        "how much quantity",
-        "what quantity",
-        "how much should i order",
-        "how many should i order",
-        "quantity should i order",
-        "how much",
-        "how many",
-        "enough for",
-        "for party",
-        "for people",
-        "for guests",
-        "for persons",
-        "for person",
+        "how much quantity", "what quantity", "how much should i order",
+        "how many should i order", "quantity should i order", "how much",
+        "how many", "enough for", "for party", "for people", "for guests",
+        "for persons", "for person",
     ]
     if any(k in msg for k in keys):
         return True
     return bool(re.search(r"\b(\d{1,4})\s*(people|persons|guests|pax|person)\b", msg))
 
 
-def _extract_spice_level(text: str):
-    msg = _normalize_text(text)
-    if any(k in msg for k in ["mild", "low spice", "less spicy", "not spicy"]):
-        return "mild"
-    if any(k in msg for k in ["medium", "medium spicy", "normal spicy"]):
-        return "medium"
-    if any(k in msg for k in ["spicy", "hot", "extra spicy"]):
-        return "spicy"
-    return None
-
-
 def _is_ingredient_query(text: str) -> bool:
     msg = _normalize_text(text)
-    keys = [
+    return any(k in msg for k in [
         "ingredient", "ingredients", "made of", "what is in",
         "contains", "allergen", "allergy",
-    ]
-    return any(k in msg for k in keys)
+    ])
 
 
 def _is_veg_query(text: str) -> bool:
     msg = _normalize_text(text)
-    veg_patterns = [
+    return any(re.search(p, msg) for p in [
         r"\bveg\b", r"\bvegetarian\b", r"\bnon.?veg\b",
         r"\bmeat\b", r"\bcontain meat\b", r"\bis it veg\b",
         r"\bis .* veg", r"\bveg or not\b", r"\bpaneer\b.*\bveg\b",
-    ]
-    return any(re.search(p, msg) for p in veg_patterns)
+    ])
 
 
 def _veg_status_reply(item: MenuItem) -> str:
     name_lower = _normalize_text(item.name or "")
     desc_lower = _normalize_text(item.description or "")
-
     non_veg_keys = ["chicken", "fish", "mutton", "lamb", "prawn", "egg", "meat", "beef", "pork", "seafood"]
     veg_keys = ["paneer", "cottage cheese", "mushroom", "vegetable", "veg", "tofu", "soya", "dal", "gobi", "aloo", "chana"]
 
@@ -346,29 +306,28 @@ def _veg_status_reply(item: MenuItem) -> str:
 
     if is_non_veg:
         return (
-            f"{item.name} is a non-vegetarian dish 🍖. "
-            "Would you like me to suggest a vegetarian alternative, or shall I go ahead with this?"
+            f"{item.name} is non-veg 🍖. "
+            "Want me to suggest a vegetarian alternative, or shall I go ahead with this?"
         )
-    elif is_veg:
+    if is_veg:
         return (
-            f"Yes, {item.name} is a vegetarian dish 🌿. "
-            f"It's available for Rs {int(item.price or 0)}. Would you like to order it?"
+            f"Yes, {item.name} is vegetarian 🌿 — available at {_format_price(item.price)}. "
+            "Would you like to order it?"
         )
-    else:
-        return (
-            f"I don't have a confirmed veg/non-veg tag for {item.name} right now 🙏. "
-            "I'd recommend checking with our kitchen staff to be safe. "
-            "Would you still like to place this order, or can I suggest something else?"
-        )
+    return (
+        f"I don't have a confirmed veg/non-veg tag for {item.name} right now 🙏. "
+        "Best to check with our kitchen if you have dietary restrictions. "
+        "Want to go ahead anyway?"
+    )
 
 
 def _ingredient_reply_for_item(item: MenuItem) -> str:
     description = (item.description or "").strip()
     if description:
-        return f"Here are the listed ingredients for {item.name} 🧾: {description}"
+        return f"Here's what goes into {item.name} 🧾: {description}"
     return (
-        f"I don't have the exact kitchen ingredient sheet for {item.name} yet 🧾. "
-        "If you have allergy concerns, tell me what to avoid and I'll suggest a safer option."
+        f"I don't have the full ingredient list for {item.name} right now 🧾. "
+        "If you have specific allergens to avoid, tell me and I'll suggest something safer."
     )
 
 
@@ -381,8 +340,7 @@ def _is_veg_name(name: str) -> bool:
 
 def _is_nonveg_name(name: str) -> bool:
     n = _normalize_text(name)
-    non_veg_keys = ["chicken", "fish", "mutton", "lamb", "prawn", "egg", "seafood", "meat", "beef", "pork"]
-    return any(k in n for k in non_veg_keys)
+    return any(k in n for k in ["chicken", "fish", "mutton", "lamb", "prawn", "egg", "seafood", "meat", "beef", "pork"])
 
 
 def _format_price(price) -> str:
@@ -421,31 +379,19 @@ def _filter_items_for_pref(items, dietary_pref: str, starters_only: bool = False
 def _format_menu(items, dietary_pref: str = "all", starters_only: bool = False) -> str:
     filtered = _filter_items_for_pref(items, dietary_pref, starters_only=starters_only)
     if not filtered:
-        if starters_only:
-            return "I couldn't find starter options for this preference right now."
-        return "I couldn't find menu items for this preference right now."
+        return "No items found for this preference right now." if not starters_only else "No starters found for this preference."
 
-    grouped = {
-        "Starters": [],
-        "Main Course": [],
-        "Rice & Noodles": [],
-        "Curries": [],
-    }
-    emoji_for = {
-        "Starters": "🥗",
-        "Main Course": "🍛",
-        "Rice & Noodles": "🍜",
-        "Curries": "🍛",
-    }
+    grouped: dict = {}
+    emoji_for = {"Starters": "🥗", "Main Course": "🍛", "Rice & Noodles": "🍜", "Curries": "🍛"}
+    order = ["Starters", "Main Course", "Rice & Noodles", "Curries"]
 
     for item in filtered:
         _, section = _section_for_item(item)
-        grouped.setdefault(section, [])
-        grouped[section].append(item)
+        grouped.setdefault(section, []).append(item)
 
     header = "📋 *Full Menu*" if not starters_only else "🥗 *Starter Options*"
     lines = [header, ""]
-    for section in ["Starters", "Main Course", "Rice & Noodles", "Curries"]:
+    for section in order:
         section_items = grouped.get(section, [])
         if not section_items:
             continue
@@ -460,26 +406,26 @@ def _format_menu(items, dietary_pref: str = "all", starters_only: bool = False) 
 def _format_top_picks(items, dietary_pref: str = "all") -> str:
     filtered = _filter_items_for_pref(items, dietary_pref)
     if not filtered:
-        return "I couldn't find recommendations for this preference right now."
+        return "Couldn't find recommendations for this preference right now."
 
-    top = filtered[:4]
     reason_by_section = {
         "Starters": "Great starter with balanced flavors",
         "Main Course": "Rich and satisfying main dish",
         "Rice & Noodles": "Comforting and filling choice",
         "Curries": "Aromatic and flavorful curry",
     }
-
     lines = ["⭐ *Top Picks for You*", ""]
-    for idx, it in enumerate(top, start=1):
+    for idx, it in enumerate(filtered[:4], start=1):
         _, section = _section_for_item(it)
-        reason = reason_by_section.get(section, "Popular among our regulars")
-        lines.append(f"{idx}. {it.name} – {reason}")
+        lines.append(f"{idx}. {it.name} – {reason_by_section.get(section, 'Popular among regulars')}")
     return "\n".join(lines)
 
 
 def _is_show_full_menu_intent(msg: str) -> bool:
-    return any(k in msg for k in ["full menu", "complete menu", "entire menu", "provide menu", "all menu", "fullmenu", "share me your menu", "show me menu", "show menu", "your menu"])
+    return any(k in msg for k in [
+        "full menu", "complete menu", "entire menu", "provide menu",
+        "all menu", "fullmenu", "share me your menu", "show me menu", "show menu", "your menu",
+    ])
 
 
 def _is_starter_intent(msg: str) -> bool:
@@ -487,15 +433,23 @@ def _is_starter_intent(msg: str) -> bool:
 
 
 def _is_best_dish_intent(msg: str) -> bool:
-    return any(k in msg for k in ["best dish", "best item", "top dish", "what's best", "best among", "top picks", "special", "what is special"])
+    return any(k in msg for k in [
+        "best dish", "best item", "top dish", "what's best", "best among",
+        "top picks", "special", "what is special",
+    ])
 
 
 def _is_veg_menu_intent(msg: str) -> bool:
-    return any(k in msg for k in ["veg options", "vegetarian options", "veg menu", "vegetarian menu", "show veg", "show vegetarian", "veg items", "vegetarian items"])
+    return any(k in msg for k in [
+        "veg options", "vegetarian options", "veg menu", "vegetarian menu",
+        "show veg", "show vegetarian", "veg items", "vegetarian items",
+    ])
 
 
 def _is_order_intent(msg: str) -> bool:
-    return any(k in msg for k in ["i want to order", "order this", "place order", "i will take", "i'll take", "book this"])
+    return any(k in msg for k in [
+        "i want to order", "order this", "place order", "i will take", "i'll take", "book this",
+    ])
 
 
 def _is_modify_order_intent(msg: str) -> bool:
@@ -503,38 +457,51 @@ def _is_modify_order_intent(msg: str) -> bool:
 
 
 def _is_add_more_intent(msg: str) -> bool:
-    return any(
-        k in msg
-        for k in [
-            "order more",
-            "add more",
-            "add another",
-            "another order",
-            "more items",
-            "i want to order more",
-            "i want more",
-            "add item",
-            "i want to add",
-            "also add",
-            "add this also",
-            "add that also",
-            "also want to add",
-            "or bhi",
-            "aur bhi",
-            "bhi order",
-            "bhi lena",
-            "also order",
-            "want to order more",
-            "more order",
-            # FIX: additional natural "add more" expressions
-            "want to add",
-            "like to add",
-            "add some more",
-            "add few more",
-            "something else",
-            "anything else to add",
-        ]
-    )
+    return any(k in msg for k in [
+        "order more", "add more", "add another", "another order", "more items",
+        "i want to order more", "i want more", "add item", "i want to add",
+        "also add", "add this also", "add that also", "also want to add",
+        "or bhi", "aur bhi", "bhi order", "bhi lena", "also order",
+        "want to order more", "more order", "want to add", "like to add",
+        "add some more", "add few more", "something else", "anything else to add",
+        "and i want to order more", "and want to order more",
+        "and also want", "and i also want",
+    ])
+
+
+# ── KEY FIX: Parse "Name + add more" in a single message ─────────────────────
+def _parse_name_and_add_more(message: str):
+    """
+    Returns (name_str_or_None, has_add_more_bool).
+
+    Handles messages like:
+      "Rohit and i want to order more"  → ("Rohit", True)
+      "Rohit"                           → ("Rohit", False)
+      "and i want to order more"        → (None,    True)
+    """
+    msg_lower = _normalize_text(message)
+
+    add_more_triggers = [
+        "and i want to order more", "and want to order more",
+        "and i want more", "and also want", "and i also want",
+        "and add more", "and order more", "i want to order more",
+        "want to order more", "and more",
+    ]
+
+    for trigger in add_more_triggers:
+        if trigger in msg_lower:
+            idx = msg_lower.index(trigger)
+            candidate = message[:idx].strip().rstrip(",.!? ")
+            if candidate and _is_valid_name(candidate):
+                return candidate, True
+            return None, True
+
+    # No add-more keyword — just a plain name?
+    stripped = message.strip()
+    if _is_valid_name(stripped):
+        return stripped, False
+
+    return None, False
 
 
 def _has_strong_intent(msg: str, stage: str) -> bool:
@@ -551,24 +518,24 @@ def _has_strong_intent(msg: str, stage: str) -> bool:
         or _is_veg_query(m)
         or _is_party_catering_intent(m)
         or _is_add_more_intent(m)
-        or _is_affirmative(m)       # FIX: affirmative mid-flow must also route to fallback handler
+        or _is_affirmative(m)
         or any(k in m for k in ["veg", "vegetarian", "non veg", "nonveg"])
     )
 
 
 def _extract_contact_number(text: str):
     digits = re.sub(r"\D", "", text or "")
-    if len(digits) >= 10:
-        return digits[-10:]
-    return None
+    return digits[-10:] if len(digits) >= 10 else None
 
 
 def _is_valid_name(text: str) -> bool:
     t = (text or "").strip()
     if len(t) < 2:
         return False
-    lowered = _normalize_text(t)
-    if any(k in lowered for k in ["order", "more", "confirm", "menu", "address", "contact", "number", "item", "add", "cart"]):
+    if any(k in _normalize_text(t) for k in [
+        "order", "more", "confirm", "menu", "address", "contact",
+        "number", "item", "add", "cart",
+    ]):
         return False
     return bool(re.fullmatch(r"[A-Za-z ]+", t))
 
@@ -576,7 +543,7 @@ def _is_valid_name(text: str) -> bool:
 def _format_order_summary(ctx: dict) -> str:
     order_lines = ctx.get("order_lines") or []
     if not order_lines:
-        return "I could not build your order summary because no items were captured."
+        return "I couldn't build your order summary — no items were captured."
 
     name = ctx.get("customer_name", "Not provided")
     contact = ctx.get("customer_contact", "Not provided")
@@ -584,7 +551,7 @@ def _format_order_summary(ctx: dict) -> str:
     subtotal = sum(int(line.get("line_total", 0)) for line in order_lines)
 
     lines = [
-        "✅ *Order Confirmed*",
+        "✅ *Order Confirmed!*",
         "",
         "🧾 *Order Summary*",
         f"• Name: {name}",
@@ -593,29 +560,25 @@ def _format_order_summary(ctx: dict) -> str:
         "",
         "🍽️ *Items*",
     ]
-
     for line in order_lines:
-        item_name = line.get("name", "Item")
         qty = int(line.get("qty", 1))
         unit_price = int(line.get("unit_price", 0))
         line_total = int(line.get("line_total", unit_price * qty))
-        lines.append(f"• {item_name} x {qty} — {_format_price(unit_price)} = {_format_price(line_total)}")
+        lines.append(f"• {line.get('name', 'Item')} x {qty} — {_format_price(unit_price)} = {_format_price(line_total)}")
 
-    lines.extend(["", f"💵 *Total Bill:* {_format_price(subtotal)}", "⏱️ Estimated delivery: 30 mins"])
+    lines += ["", f"💵 *Total Bill:* {_format_price(subtotal)}", "⏱️ Estimated delivery: 30 mins"]
     return "\n".join(lines)
 
 
 def _format_order_snapshot(order_lines: list) -> str:
     if not order_lines:
         return ""
-
     subtotal = sum(int(line.get("line_total", 0)) for line in order_lines)
     lines = ["🧾 *Order so far*"]
     for line in order_lines:
-        item_name = line.get("name", "Item")
         qty = int(line.get("qty", 1))
         line_total = int(line.get("line_total", 0))
-        lines.append(f"• {item_name} x {qty} — {_format_price(line_total)}")
+        lines.append(f"• {line.get('name', 'Item')} x {qty} — {_format_price(line_total)}")
     lines.append(f"💵 *Subtotal:* {_format_price(subtotal)}")
     return "\n".join(lines)
 
@@ -626,41 +589,39 @@ def _append_order_line(ctx: dict, item_name: str, qty: int, unit_price: int) -> 
 
     for line in order_lines:
         if _normalize_text(line.get("name", "")) == item_key:
-            prev_qty = int(line.get("qty", 0))
-            new_qty = prev_qty + int(qty)
+            new_qty = int(line.get("qty", 0)) + int(qty)
             line["qty"] = new_qty
             line["unit_price"] = int(unit_price)
             line["line_total"] = int(unit_price) * new_qty
             ctx["order_lines"] = order_lines
             return order_lines
 
-    order_lines.append(
-        {
-            "name": item_name,
-            "qty": int(qty),
-            "unit_price": int(unit_price),
-            "line_total": int(unit_price) * int(qty),
-        }
-    )
+    order_lines.append({
+        "name": item_name,
+        "qty": int(qty),
+        "unit_price": int(unit_price),
+        "line_total": int(unit_price) * int(qty),
+    })
     ctx["order_lines"] = order_lines
     return order_lines
 
 
 def _next_details_prompt(stage: str) -> str:
     if stage == "awaiting_name":
-        return "Please share your *name* for this order."
+        return "What's your name for the order? 😊"
     if stage == "awaiting_contact":
-        return "Please share your *contact number* for this order."
+        return "And your contact number?"
     if stage == "awaiting_address":
-        return "Please share your *delivery address* now."
+        return "Last thing — what's your delivery address?"
     return ""
 
 
 def _build_item_confirmation(item_name: str, price: int, qty: int) -> str:
+    total = _format_price(price * qty)
     variants = [
-        f"Great choice 👍 {item_name} ({_format_price(price)} each)\nI have noted *{qty}* for this item. Shall I confirm your order?",
-        f"Nice pick 👌 {item_name} ({_format_price(price)} each)\nYou want *{qty}* plate(s). Would you like me to confirm it?",
-        f"Perfect, {item_name} sounds good 😄 ({_format_price(price)} each)\nQuantity set to *{qty}*. Should I go ahead and confirm?",
+        f"Nice choice! *{item_name}* at {_format_price(price)} each — *{qty}* for you 👍\nWant to confirm this, or add something else?",
+        f"Got it — *{qty} × {item_name}* = {total} 🙌\nShall I go ahead, or would you like to add more?",
+        f"Sure thing — *{qty} × {item_name}* at {_format_price(price)} each 😊\nReady to confirm, or anything else to add?",
     ]
     return random.choice(variants)
 
@@ -668,20 +629,18 @@ def _build_item_confirmation(item_name: str, price: int, qty: int) -> str:
 # ── GREETING ──────────────────────────────────────────────────────────────────
 def _compose_greeting_only(db: Session, restaurant_id: str) -> str:
     restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
-    restaurant_name = (restaurant.name if restaurant else "our restaurant").strip()
-
-    greetings = [
-        f"Welcome to *{restaurant_name}* 👋 Great to have you here!\nHow can I help you today? You can ask for our menu, recommendations, or place an order.",
-        f"Hi there! Welcome to *{restaurant_name}* 😊\nWhat can I get for you today?",
-        f"Hello! Welcome to *{restaurant_name}* 👋\nFeel free to ask for our menu, today's specials, or go ahead and place an order!",
-    ]
-    return random.choice(greetings)
+    rname = (restaurant.name if restaurant else "our restaurant").strip()
+    return random.choice([
+        f"Hey! Welcome to *{rname}* 👋 Great to have you here!\nWhat can I get you today? Ask for the menu, recommendations, or just tell me what you're craving 😄",
+        f"Hi there! Welcome to *{rname}* 😊\nFeel free to browse the menu or tell me what you'd like — I'm here to help!",
+        f"Hello! Welcome to *{rname}* 👋\nLooking for the menu, today's specials, or ready to order? Just say the word!",
+    ])
 
 
 def _compose_first_turn_greeting(db: Session, restaurant_id: str, dietary_pref: str = "all") -> str:
     restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
-    restaurant_name = (restaurant.name if restaurant else "our restaurant").strip()
-    return f"Welcome to *{restaurant_name}* 👋"
+    rname = (restaurant.name if restaurant else "our restaurant").strip()
+    return f"Welcome to *{rname}* 👋"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -691,20 +650,16 @@ def _estimate_qty_for_people(item: MenuItem, people_count: int):
     _, section = _section_for_item(item)
 
     if any(k in name for k in ["fries", "salad", "snack", "starter", "tikka", "burger"]):
-        low_factor, high_factor = 0.45, 0.65
-        note = "as a snack/side serving"
+        low_f, high_f, note = 0.45, 0.65, "as a snack/side"
     elif section == "Starters":
-        low_factor, high_factor = 0.5, 0.75
-        note = "for starter portions"
+        low_f, high_f, note = 0.5, 0.75, "for starter portions"
     elif section in {"Rice & Noodles", "Curries", "Main Course"}:
-        low_factor, high_factor = 0.35, 0.55
-        note = "when served with multiple dishes"
+        low_f, high_f, note = 0.35, 0.55, "when served with multiple dishes"
     else:
-        low_factor, high_factor = 0.45, 0.65
-        note = "as an average portion estimate"
+        low_f, high_f, note = 0.45, 0.65, "as an average estimate"
 
-    low = max(1, int(round(people * low_factor)))
-    high = max(low, int(round(people * high_factor)))
+    low = max(1, int(round(people * low_f)))
+    high = max(low, int(round(people * high_f)))
     suggested = int(round((low + high) / 2))
     return low, high, suggested, note
 
@@ -712,16 +667,17 @@ def _estimate_qty_for_people(item: MenuItem, people_count: int):
 def _build_quantity_suggestion_reply(item: MenuItem, people_count: int) -> str:
     low, high, suggested, note = _estimate_qty_for_people(item, people_count)
     return (
-        f"For *{people_count} people*, I recommend about *{low}–{high}* portions of *{item.name}* ({note}).\n"
-        f"A safe quantity to start with is *{suggested}*.\n"
-        f"Shall I add *{suggested} x {item.name}* to your order?"
+        f"For *{people_count} people*, I'd suggest *{low}–{high}* portions of *{item.name}* ({note}) 🍽️\n"
+        f"*{suggested}* is a safe starting point.\n"
+        f"Want me to add *{suggested} × {item.name}* to your order?"
     )
 
 
 def _is_same_pending_selection(ctx: dict, item_name: str, qty: int) -> bool:
-    pending_item = _normalize_text(ctx.get("pending_item") or "")
-    pending_qty = int(ctx.get("pending_qty") or 1)
-    return pending_item == _normalize_text(item_name) and pending_qty == int(qty)
+    return (
+        _normalize_text(ctx.get("pending_item") or "") == _normalize_text(item_name)
+        and int(ctx.get("pending_qty") or 1) == int(qty)
+    )
 
 
 def _recent_confirmation_prompt(ctx: dict, within_seconds: int = 120) -> bool:
@@ -761,8 +717,7 @@ def _find_best_item_match(message: str, items):
     if not msg:
         return None
 
-    exact = []
-    scored = []
+    exact, scored = [], []
     msg_tokens = {t for t in re.findall(r"[a-zA-Z]+", msg) if len(t) > 2}
 
     for item in items:
@@ -787,25 +742,23 @@ def _find_best_item_match(message: str, items):
     return None
 
 
-def _suggest_items(items, *, veg_only: bool = False, limit: int = 4):
-    pool = [i for i in items if _is_veg_name(i.name or "")] if veg_only else list(items)
-    return pool[:limit]
+_GREETING_WORDS = {
+    "hi", "hello", "hey", "good morning", "good evening",
+    "good afternoon", "namaste", "hii", "helo",
+}
 
-
-# ── INTENT CLASSIFICATION ─────────────────────────────────────────────────────
-_GREETING_WORDS = {"hi", "hello", "hey", "good morning", "good evening", "good afternoon", "namaste", "hii", "helo"}
 
 def _is_greeting(msg: str) -> bool:
     m = _normalize_text(msg)
     if m in _GREETING_WORDS:
         return True
     words = m.split()
-    if len(words) <= 3 and all(w in _GREETING_WORDS for w in words):
-        return True
-    return False
-# ─────────────────────────────────────────────────────────────────────────────
+    return len(words) <= 3 and all(w in _GREETING_WORDS for w in words)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+#  MAIN FALLBACK HANDLER
+# ═════════════════════════════════════════════════════════════════════════════
 def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, message: str) -> str:
     items = (
         db.query(MenuItem)
@@ -819,104 +772,88 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
     msg = _normalize_text(message)
 
     if not items:
-        return "Our menu is being updated right now. Please check back in a bit, and I'll help you place your order."
+        return "Our menu is being updated right now. Please check back soon!"
 
     pending_item = ctx.get("pending_item")
     stage = ctx.get("stage")
     dietary_pref = ctx.get("dietary_pref", "all")
     first_turn = not bool(ctx.get("welcomed"))
 
-    # ── FIRST TURN LOGIC ──────────────────────────────────────────────────────
+    # ── FIRST TURN ────────────────────────────────────────────────────────────
     if first_turn:
         ctx["welcomed"] = True
         conv.context_json = ctx
-        db.commit()  # FIX: commit welcomed flag immediately so recursive call sees it
+        db.commit()
 
         if _is_greeting(message):
             return _compose_greeting_only(db, restaurant_id)
 
-        # Non-greeting first message: handle intent directly (no recursion that re-enters first_turn)
-        # Set welcomed=True, then process intent as if it's a normal (non-first) turn
-        welcome_prefix = _compose_first_turn_greeting(db, restaurant_id, dietary_pref=dietary_pref)
-
-        # FIX: directly handle party intent here instead of recursing
         if _is_party_catering_intent(msg):
-            party_reply = _handle_party_intent(db, restaurant_id, message, items)
-            return f"{welcome_prefix}\n\n{party_reply}"
+            welcome = _compose_first_turn_greeting(db, restaurant_id)
+            return f"{welcome}\n\n{_handle_party_intent(db, restaurant_id, message, items)}"
 
-        core_reply = _fallback_reply(db, restaurant_id, customer_phone, message)
-        if _normalize_text(core_reply).startswith("welcome"):
-            return core_reply
-        return f"{welcome_prefix}\n\n{core_reply}"
-    # ─────────────────────────────────────────────────────────────────────────
+        welcome = _compose_first_turn_greeting(db, restaurant_id, dietary_pref=dietary_pref)
+        core = _fallback_reply(db, restaurant_id, customer_phone, message)
+        if _normalize_text(core).startswith("welcome"):
+            return core
+        return f"{welcome}\n\n{core}"
 
-    # Repeated greeting (not first turn)
+    # ── REPEATED GREETING ─────────────────────────────────────────────────────
     if _is_greeting(message):
-        return "Hi again 👋 How can I help you with your order today?"
+        return random.choice([
+            "Hey again! 👋 What can I get for you?",
+            "Hi! Still here to help 😊 What would you like?",
+            "Hello! What would you like today? 🙂",
+        ])
 
-    # ── PARTY / CATERING INTENT ───────────────────────────────────────────────
+    # ── PARTY INTENT ──────────────────────────────────────────────────────────
     if _is_party_catering_intent(msg):
         return _handle_party_intent(db, restaurant_id, message, items)
 
-    # ── FULL MENU ─────────────────────────────────────────────────────────────
+    # ── MENU INTENTS ──────────────────────────────────────────────────────────
     if _is_show_full_menu_intent(msg):
-        if "veg" in msg or "vegetarian" in msg:
-            dietary_pref = "veg"
-        elif "nonveg" in msg or "non veg" in msg:
-            dietary_pref = "nonveg"
-        ctx["dietary_pref"] = dietary_pref
+        pref = "veg" if ("veg" in msg or "vegetarian" in msg) else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        ctx["dietary_pref"] = pref
         conv.context_json = ctx
-        return _format_menu(items, dietary_pref=dietary_pref, starters_only=False)
+        return _format_menu(items, dietary_pref=pref)
 
-    # ── STARTERS ─────────────────────────────────────────────────────────────
     if _is_starter_intent(msg):
-        if "veg" in msg or "vegetarian" in msg:
-            dietary_pref = "veg"
-        elif "nonveg" in msg or "non veg" in msg:
-            dietary_pref = "nonveg"
-        ctx["dietary_pref"] = dietary_pref
+        pref = "veg" if ("veg" in msg or "vegetarian" in msg) else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        ctx["dietary_pref"] = pref
         conv.context_json = ctx
-        return _format_menu(items, dietary_pref=dietary_pref, starters_only=True)
+        return _format_menu(items, dietary_pref=pref, starters_only=True)
 
-    # ── RECOMMENDATIONS ───────────────────────────────────────────────────────
     if _is_best_dish_intent(msg) or any(k in msg for k in ["recommend", "suggest"]):
-        if "veg" in msg or "vegetarian" in msg:
-            dietary_pref = "veg"
-        elif "nonveg" in msg or "non veg" in msg:
-            dietary_pref = "nonveg"
-        ctx["dietary_pref"] = dietary_pref
+        pref = "veg" if ("veg" in msg or "vegetarian" in msg) else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        ctx["dietary_pref"] = pref
         conv.context_json = ctx
-        return _format_top_picks(items, dietary_pref=dietary_pref)
+        return _format_top_picks(items, dietary_pref=pref)
 
-    # ── DIETARY FILTER ────────────────────────────────────────────────────────
     if any(k in msg for k in ["veg", "vegetarian"]) and not _is_veg_query(msg):
         ctx["dietary_pref"] = "veg"
         conv.context_json = ctx
-        return _format_menu(items, dietary_pref="veg", starters_only=False)
+        return _format_menu(items, dietary_pref="veg")
+
     if any(k in msg for k in ["nonveg", "non veg"]):
         ctx["dietary_pref"] = "nonveg"
         conv.context_json = ctx
-        return _format_menu(items, dietary_pref="nonveg", starters_only=False)
+        return _format_menu(items, dietary_pref="nonveg")
 
     if _is_veg_menu_intent(msg):
         ctx["dietary_pref"] = "veg"
         conv.context_json = ctx
-        return _format_menu(items, dietary_pref="veg", starters_only=False)
+        return _format_menu(items, dietary_pref="veg")
 
     if any(k in msg for k in ["options", "what are the options", "show options"]):
-        return _format_menu(items, dietary_pref=dietary_pref, starters_only=False)
+        return _format_menu(items, dietary_pref=dietary_pref)
 
     # ── MODIFY ORDER ──────────────────────────────────────────────────────────
     if _is_modify_order_intent(msg) and pending_item:
-        ctx["pending_item"] = None
-        ctx["pending_price"] = None
-        ctx["stage"] = None
+        ctx.update({"pending_item": None, "pending_price": None, "stage": None})
         conv.context_json = ctx
-        return "Sure, I can modify that 👍 Please tell me the item you want instead."
+        return "Sure, let's fix that 👍 Which item would you like instead?"
 
-    # ── ADD MORE ITEMS ────────────────────────────────────────────────────────
-    # FIX: This block is checked BEFORE stage-specific handlers so it is never
-    # swallowed by awaiting_name / awaiting_contact / awaiting_address logic.
+    # ── ADD MORE — checked BEFORE all stage handlers ───────────────────────────
     if _is_add_more_intent(msg):
         selected = _find_best_item_match(message, items)
         if not selected and pending_item:
@@ -925,14 +862,9 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
         prior_stage = stage
 
         if not selected:
-            # User said "add more" but didn't name a dish — ask what they want
             conv.context_json = ctx
-            if prior_stage in {"awaiting_name", "awaiting_contact", "awaiting_address"}:
-                return (
-                    "Sure 🙂 Tell me the next dish you want to add and I'll include it.\n"
-                    f"_(You can also reply with just the dish name to continue)_"
-                )
-            return "Sure 🙂 Tell me the next dish you want to add and I'll include it."
+            hint = "\n_(After adding, I'll continue with your order details)_" if prior_stage in {"awaiting_name", "awaiting_contact", "awaiting_address"} else ""
+            return f"Of course! 😊 Which dish would you like to add?{hint}"
 
         price = int(selected.price or 0)
         qty_raw = _extract_qty(message)
@@ -940,164 +872,170 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
         qty = 1 if (people and qty_raw == people) else (qty_raw or 1)
 
         order_lines = _append_order_line(ctx, selected.name, qty, price)
-        ctx["pending_item"] = None
-        ctx["pending_price"] = None
-        ctx["pending_qty"] = None
-        ctx["last_confirmation_prompt_at"] = None
-        # Keep prior_stage so flow can continue from where it left off
-        ctx["stage"] = prior_stage
+        ctx.update({
+            "pending_item": None, "pending_price": None,
+            "pending_qty": None, "last_confirmation_prompt_at": None,
+            "stage": prior_stage,
+        })
         conv.context_json = ctx
 
         snapshot = _format_order_snapshot(order_lines)
         if prior_stage == "confirmed":
-            return f"Done 👍 Added *{qty} x {selected.name}* to your order.\n{snapshot}\n\nAnything else you'd like to add?"
+            return f"Done! Added *{qty} × {selected.name}* ✅\n{snapshot}\n\nAnything else you'd like?"
         if prior_stage in {"awaiting_name", "awaiting_contact", "awaiting_address"}:
-            return f"Done 👍 Added *{qty} x {selected.name}* to your order.\n{snapshot}\n\n{_next_details_prompt(prior_stage)}"
-
-        # Not yet in details flow — confirm addition and ask to continue or confirm
+            return f"Done! Added *{qty} × {selected.name}* ✅\n{snapshot}\n\n{_next_details_prompt(prior_stage)}"
         return (
-            f"Done 👍 Added *{qty} x {selected.name}* ({_format_price(price)}) to your order.\n"
-            f"{snapshot}\n\nWould you like to add anything else, or shall I confirm this order?"
+            f"Added *{qty} × {selected.name}* ({_format_price(price)}) 🙌\n"
+            f"{snapshot}\n\nWant to add more, or shall I confirm?"
         )
 
-    # ── CONFIRM ITEM, BEGIN CUSTOMER DETAILS FLOW ─────────────────────────────
-    # FIX: Affirmative is now checked AFTER add-more, and covers "okay let's add to cart" etc.
-    if stage == "awaiting_confirmation" and _is_affirmative(message):
-        price = int(ctx.get("pending_price") or 0)
-        item_name = pending_item or "Selected item"
-        qty = int(ctx.get("pending_qty") or 1)
-        order_lines = _append_order_line(ctx, item_name, qty, price)
-        ctx["pending_qty"] = None
-        ctx["last_confirmation_prompt_at"] = None
-        ctx["stage"] = "awaiting_name"
-        conv.context_json = ctx
-        snapshot = _format_order_snapshot(order_lines)
-        return f"Awesome, noted ✅\n{snapshot}\n\nPlease share your *name* for this order."
-
-    # ── COLLECT NAME ──────────────────────────────────────────────────────────
+    # ── AWAITING NAME ─────────────────────────────────────────────────────────
+    # KEY FIX: handle "Rohit and i want to order more" gracefully
     if stage == "awaiting_name":
+        extracted_name, wants_more = _parse_name_and_add_more(message)
+
+        if wants_more:
+            if extracted_name:
+                # Save name but don't advance stage yet — let them add first
+                ctx["customer_name"] = extracted_name.title()
+                conv.context_json = ctx
+                return (
+                    f"Got it, *{extracted_name.title()}* 😊 No problem!\n"
+                    "Tell me what you'd like to add and I'll include it."
+                )
+            else:
+                conv.context_json = ctx
+                return "Sure! 😊 Tell me what you'd like to add.\n_(Once done, just share your name to continue)_"
+
+        # Pure name
         if not _is_valid_name(message):
-            return "Please share a valid name (letters only), for example: Rohit"
+            return "Could you share just your name? (letters only, e.g. Rohit)"
         ctx["customer_name"] = (message or "").strip().title()
         ctx["stage"] = "awaiting_contact"
         conv.context_json = ctx
-        return "Thanks 😊 Please share your *contact number* for this order."
+        return f"Thanks, *{ctx['customer_name']}* 😊 And your contact number?"
 
-    # ── COLLECT CONTACT ───────────────────────────────────────────────────────
+    # ── AWAITING CONTACT ──────────────────────────────────────────────────────
     if stage == "awaiting_contact":
         contact = _extract_contact_number(message)
         if not contact:
-            return "Please share a valid 10-digit contact number."
+            return "Hmm, that doesn't look right 🙈 Could you share a valid 10-digit number?"
         ctx["customer_contact"] = contact
         ctx["stage"] = "awaiting_address"
         conv.context_json = ctx
-        return "Got it 👍 Please share your *delivery address* now."
+        return "Got it 👍 Last thing — what's your delivery address?"
 
-    # ── COLLECT ADDRESS ───────────────────────────────────────────────────────
+    # ── AWAITING ADDRESS ──────────────────────────────────────────────────────
     if stage == "awaiting_address":
         addr = (message or "").strip()
         if len(addr) < 8:
-            return "Please share a complete delivery address (at least 8 characters)."
+            return "Could you share a more complete address? (at least a street or area name)"
         ctx["customer_address"] = addr
         ctx["stage"] = "confirmed"
         conv.context_json = ctx
         return _format_order_summary(ctx)
 
+    # ── CONFIRM ITEM → BEGIN DETAILS FLOW ─────────────────────────────────────
+    if stage == "awaiting_confirmation" and _is_affirmative(message):
+        price = int(ctx.get("pending_price") or 0)
+        item_name = pending_item or "Selected item"
+        qty = int(ctx.get("pending_qty") or 1)
+        order_lines = _append_order_line(ctx, item_name, qty, price)
+        ctx.update({"pending_qty": None, "last_confirmation_prompt_at": None, "stage": "awaiting_name"})
+        conv.context_json = ctx
+        snapshot = _format_order_snapshot(order_lines)
+        return f"Awesome, noted ✅\n{snapshot}\n\n{_next_details_prompt('awaiting_name')}"
+
     # ── NEGATIVE DURING CONFIRMATION ──────────────────────────────────────────
     if _is_negative(msg) and stage == "awaiting_confirmation":
-        ctx["stage"] = None
-        ctx["pending_qty"] = None
-        ctx["last_confirmation_prompt_at"] = None
+        ctx.update({"stage": None, "pending_qty": None, "last_confirmation_prompt_at": None})
         conv.context_json = ctx
-        return "No problem 🙂 Would you like to see more options or choose a different dish?"
+        return "No worries 🙂 Want to see more options or pick a different dish?"
 
     # ── INGREDIENT QUERY ──────────────────────────────────────────────────────
     if _is_ingredient_query(message):
-        best = _find_best_item_match(message, items)
-        if not best and pending_item:
-            best = next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+        best = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
         if best:
             return _ingredient_reply_for_item(best)
 
-    # ── VEG/NON-VEG ITEM QUERY ────────────────────────────────────────────────
+    # ── VEG QUERY ─────────────────────────────────────────────────────────────
     if _is_veg_query(message):
-        best = _find_best_item_match(message, items)
-        if not best and pending_item:
-            best = next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+        best = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
         if best:
-            ctx["pending_item"] = best.name
-            ctx["pending_price"] = int(best.price or 0)
-            ctx["stage"] = "awaiting_confirmation"
+            ctx.update({"pending_item": best.name, "pending_price": int(best.price or 0), "stage": "awaiting_confirmation"})
             conv.context_json = ctx
             return _veg_status_reply(best)
         veg_items = _filter_items_for_pref(items, "veg")
         if veg_items:
-            return _format_menu(veg_items, dietary_pref="all", starters_only=False)
-        return "I'll check the veg options for you. Could you tell me which dish you're asking about?"
+            return _format_menu(veg_items)
+        return "Which dish were you asking about? I'll check if it's vegetarian 🌿"
 
-    # ── QUANTITY SUGGESTION ("X for Y people") ────────────────────────────────
+    # ── QUANTITY SUGGESTION ────────────────────────────────────────────────────
     if _is_quantity_suggestion_intent(message):
         people_count = _extract_people_count(message)
-        selected = _find_best_item_match(message, items)
-        if not selected and pending_item:
-            selected = next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
-
+        selected = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
         if selected and people_count:
             low, high, suggested, _ = _estimate_qty_for_people(selected, people_count)
-            ctx["pending_item"] = selected.name
-            ctx["pending_price"] = int(selected.price or 0)
-            ctx["pending_qty"] = suggested
-            ctx["last_quantity_range"] = {"low": low, "high": high, "people": people_count}
-            ctx["last_confirmation_prompt_at"] = time.time()
-            ctx["stage"] = "awaiting_confirmation"
+            ctx.update({
+                "pending_item": selected.name, "pending_price": int(selected.price or 0),
+                "pending_qty": suggested,
+                "last_quantity_range": {"low": low, "high": high, "people": people_count},
+                "last_confirmation_prompt_at": time.time(), "stage": "awaiting_confirmation",
+            })
             conv.context_json = ctx
             return _build_quantity_suggestion_reply(selected, people_count)
-
         if people_count and not selected:
-            return f"For {people_count} people, I can suggest precise quantities once you tell me the dish name 😊"
-
+            return f"For {people_count} people, I can suggest quantities once you pick the dish 😊 What would you like?"
         if selected and not people_count:
-            ctx["pending_item"] = selected.name
-            ctx["pending_price"] = int(selected.price or 0)
+            ctx.update({"pending_item": selected.name, "pending_price": int(selected.price or 0)})
             conv.context_json = ctx
-            return f"How many people are you ordering *{selected.name}* for? I'll suggest the right quantity."
+            return f"How many people are you ordering *{selected.name}* for? I'll suggest the right quantity 🍽️"
 
     # ── EXPLICIT ORDER INTENT ─────────────────────────────────────────────────
     if _is_order_intent(msg):
         people_count = _extract_people_count(message)
-        selected = _find_best_item_match(message, items)
-        if not selected and pending_item:
-            selected = next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+        selected = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
         if not selected:
-            return "Sure 👍 Please tell me the exact dish name you want to order."
+            return "Sure! Which dish would you like to order? 😊"
 
         if people_count:
             low, high, suggested, _ = _estimate_qty_for_people(selected, people_count)
-            ctx["pending_item"] = selected.name
-            ctx["pending_price"] = int(selected.price or 0)
-            ctx["pending_qty"] = suggested
-            ctx["last_confirmation_prompt_at"] = time.time()
-            ctx["stage"] = "awaiting_confirmation"
+            ctx.update({
+                "pending_item": selected.name, "pending_price": int(selected.price or 0),
+                "pending_qty": suggested, "last_confirmation_prompt_at": time.time(),
+                "stage": "awaiting_confirmation",
+            })
             conv.context_json = ctx
             return _build_quantity_suggestion_reply(selected, people_count)
 
         price = int(selected.price or 0)
-        qty_raw = _extract_qty(message)
-        qty = qty_raw or 1
+        qty = _extract_qty(message) or 1
         if (
             stage == "awaiting_confirmation"
             and _is_same_pending_selection(ctx, selected.name, qty)
             and _recent_confirmation_prompt(ctx)
         ):
             return (
-                f"You're all set with *{qty} x {selected.name}* 👍\n"
-                "Just reply *confirm* to place it, or tell me what you want to change."
+                f"Still have *{qty} × {selected.name}* lined up 👍\n"
+                "Reply *confirm* to place it, or let me know if you want to change anything."
             )
-        ctx["pending_item"] = selected.name
-        ctx["pending_price"] = price
-        ctx["pending_qty"] = qty
-        ctx["last_confirmation_prompt_at"] = time.time()
-        ctx["stage"] = "awaiting_confirmation"
+        ctx.update({
+            "pending_item": selected.name, "pending_price": price,
+            "pending_qty": qty, "last_confirmation_prompt_at": time.time(),
+            "stage": "awaiting_confirmation",
+        })
         conv.context_json = ctx
         return _build_item_confirmation(selected.name, price, qty)
 
@@ -1106,51 +1044,56 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
     if best_item:
         people_count = _extract_people_count(message)
         price = int(best_item.price) if best_item.price is not None else 0
+
         if people_count:
             low, high, suggested, _ = _estimate_qty_for_people(best_item, people_count)
-            ctx["pending_item"] = best_item.name
-            ctx["pending_price"] = price
-            ctx["pending_qty"] = suggested
-            ctx["last_confirmation_prompt_at"] = time.time()
-            ctx["stage"] = "awaiting_confirmation"
+            ctx.update({
+                "pending_item": best_item.name, "pending_price": price,
+                "pending_qty": suggested, "last_confirmation_prompt_at": time.time(),
+                "stage": "awaiting_confirmation",
+            })
             conv.context_json = ctx
             return _build_quantity_suggestion_reply(best_item, people_count)
 
-        qty_raw = _extract_qty(message)
-        qty = qty_raw or 1
+        qty = _extract_qty(message) or 1
         if (
             stage == "awaiting_confirmation"
             and _is_same_pending_selection(ctx, best_item.name, qty)
             and _recent_confirmation_prompt(ctx)
         ):
             return (
-                f"I still have *{qty} x {best_item.name}* pending 👍\n"
-                "Reply *confirm* to continue, or share updates if you want to change the order."
+                f"Still got *{qty} × {best_item.name}* pending 👍\n"
+                "Reply *confirm* to continue, or tell me if you want to update."
             )
-        ctx["pending_item"] = best_item.name
-        ctx["pending_price"] = price
-        ctx["pending_qty"] = qty
-        ctx["last_confirmation_prompt_at"] = time.time()
-        ctx["stage"] = "awaiting_confirmation"
+        ctx.update({
+            "pending_item": best_item.name, "pending_price": price,
+            "pending_qty": qty, "last_confirmation_prompt_at": time.time(),
+            "stage": "awaiting_confirmation",
+        })
         conv.context_json = ctx
         return _build_item_confirmation(best_item.name, price, qty)
 
-    # ── GENERIC MENU FALLBACK ─────────────────────────────────────────────────
+    # ── MENU KEYWORD ──────────────────────────────────────────────────────────
     if any(k in msg for k in ["menu", "what do you have", "show", "options", "available"]):
-        return _format_menu(items, dietary_pref=dietary_pref, starters_only=False)
+        return _format_menu(items, dietary_pref=dietary_pref)
 
-    # ── LAST RESORT FALLBACK ──────────────────────────────────────────────────
+    # ── LAST RESORT ───────────────────────────────────────────────────────────
     return (
-        "I can help you with menu, recommendations, ingredients, and placing orders 🙂\n"
-        "Try asking:\n"
-        "• show full menu\n"
-        "• recommend a veg starter\n"
-        "• ingredients of <dish name>\n"
-        "• I want to order 2 <dish name>"
+        "I'm here to help! 🙂 You can:\n"
+        "• Ask for the *full menu*\n"
+        "• Say *recommend me something*\n"
+        "• Ask about ingredients — e.g. _ingredients of Cheesy Fries_\n"
+        "• Place an order — e.g. _I want 2 Cheesy Fries_"
     )
 
 
-def generate_ai_reply(db: Session, restaurant_id: str, customer_phone: str, customer_message: str, cfg: RestaurantWhatsappConfig) -> str:
+def generate_ai_reply(
+    db: Session,
+    restaurant_id: str,
+    customer_phone: str,
+    customer_message: str,
+    cfg: RestaurantWhatsappConfig,
+) -> str:
     conv = _get_or_create_conversation(db, restaurant_id, customer_phone)
     ctx = dict(conv.context_json or {})
     first_turn = not bool(ctx.get("welcomed"))
@@ -1219,8 +1162,7 @@ def generate_ai_reply(db: Session, restaurant_id: str, customer_phone: str, cust
             conv.context_json = ctx
             if _is_greeting(customer_message):
                 return _compose_greeting_only(db, restaurant_id)
-            normalized = _normalize_text(final_text)
-            if not normalized.startswith("welcome"):
+            if not _normalize_text(final_text).startswith("welcome"):
                 welcome = _compose_first_turn_greeting(db, restaurant_id, dietary_pref=ctx.get("dietary_pref", "all"))
                 final_text = f"{welcome}\n\n{final_text}"
 
@@ -1230,16 +1172,21 @@ def generate_ai_reply(db: Session, restaurant_id: str, customer_phone: str, cust
         return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
 
 
-def _log_message(db: Session, restaurant_id: str, customer_phone: str, direction: str, message: str, wa_message_id: str = None):
-    db.add(
-        WhatsAppMessage(
-            restaurant_id=restaurant_id,
-            customer_phone=customer_phone,
-            direction=direction,
-            message=message,
-            wa_message_id=wa_message_id,
-        )
-    )
+def _log_message(
+    db: Session,
+    restaurant_id: str,
+    customer_phone: str,
+    direction: str,
+    message: str,
+    wa_message_id: str = None,
+):
+    db.add(WhatsAppMessage(
+        restaurant_id=restaurant_id,
+        customer_phone=customer_phone,
+        direction=direction,
+        message=message,
+        wa_message_id=wa_message_id,
+    ))
 
 
 def _upsert_conversation(db: Session, restaurant_id: str, customer_phone: str, last_message: str):
@@ -1276,7 +1223,13 @@ def get_recent_messages(db: Session, restaurant_id: str, customer_phone: str, li
     )
 
 
-def simulate_chat(db: Session, restaurant_id: str, customer_phone: str, message: str, send_to_whatsapp: bool = False):
+def simulate_chat(
+    db: Session,
+    restaurant_id: str,
+    customer_phone: str,
+    message: str,
+    send_to_whatsapp: bool = False,
+):
     cfg = get_or_create_config(db, restaurant_id)
 
     _log_message(db, restaurant_id, customer_phone, "incoming", message)
@@ -1286,8 +1239,7 @@ def simulate_chat(db: Session, restaurant_id: str, customer_phone: str, message:
     _log_message(db, restaurant_id, customer_phone, "outgoing", reply)
     _upsert_conversation(db, restaurant_id, customer_phone, reply)
 
-    sent = False
-    meta_error = None
+    sent, meta_error = False, None
     if send_to_whatsapp:
         sent, meta_error = send_whatsapp_message(cfg, customer_phone, reply)
 
@@ -1310,24 +1262,18 @@ def send_whatsapp_message(cfg: RestaurantWhatsappConfig, to_phone: str, message:
         "type": "text",
         "text": {"body": message},
     }
-
     req = urlrequest.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        },
+        headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
         method="POST",
     )
-
     try:
         with urlrequest.urlopen(req, timeout=15):
             return True, None
     except HTTPError as exc:
         try:
-            body = exc.read().decode("utf-8")
-            return False, body
+            return False, exc.read().decode("utf-8")
         except Exception:
             return False, str(exc)
     except Exception as exc:
@@ -1335,14 +1281,10 @@ def send_whatsapp_message(cfg: RestaurantWhatsappConfig, to_phone: str, message:
 
 
 def process_meta_webhook_payload(db: Session, payload: dict):
-    entries = payload.get("entry", [])
-    for entry in entries:
+    for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
-            metadata = value.get("metadata", {})
-            messages = value.get("messages", [])
-
-            phone_number_id = metadata.get("phone_number_id")
+            phone_number_id = value.get("metadata", {}).get("phone_number_id")
             if not phone_number_id:
                 continue
 
@@ -1357,10 +1299,9 @@ def process_meta_webhook_payload(db: Session, payload: dict):
             if not cfg:
                 continue
 
-            for msg in messages:
+            for msg in value.get("messages", []):
                 if msg.get("type") != "text":
                     continue
-
                 customer_phone = msg.get("from")
                 text = (msg.get("text") or {}).get("body", "").strip()
                 wa_message_id = msg.get("id")
