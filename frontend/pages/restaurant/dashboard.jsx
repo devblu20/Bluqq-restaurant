@@ -2,44 +2,41 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Head from "next/head";
-import { useRestaurantAuth } from "../../hooks/useRestaurantAuth"; // Added Hook
+import { useRestaurantAuth } from "../../hooks/useRestaurantAuth";
 import {
   getOnboardingStatus, goLiveCheck, getMenuItems, getCategories
 } from "../../services/api";
 import {
   LayoutGrid, BookOpen, ShoppingBag, BarChart2, Settings, User,
   LogOut, ChefHat, PenLine, ArrowRight, Loader2, CheckCircle2,
-  Circle, UtensilsCrossed, MessageCircle
+  Circle, UtensilsCrossed, MessageCircle, TrendingUp, Zap, Flame
 } from "lucide-react";
 
 const NAV_MAIN = [
-  { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
-  { label: "Menu", icon: BookOpen, href: "/restaurant/edit/menu" },
-  { label: "WhatsApp AI", icon: MessageCircle, href: "/restaurant/whatsapp-chat" },
-  { label: "Orders", icon: ShoppingBag, href: "/restaurant/orders" },
-  { label: "Analytics", icon: BarChart2, href: "/restaurant/analytics" },
+  { label: "Dashboard",   icon: LayoutGrid,     href: "/restaurant/dashboard" },
+  { label: "Menu",        icon: BookOpen,        href: "/restaurant/edit/menu" },
+  { label: "WhatsApp AI", icon: MessageCircle,   href: "/restaurant/whatsapp-chat" },
+  { label: "Orders",      icon: ShoppingBag,     href: "/restaurant/orders" },
+  { label: "Analytics",   icon: BarChart2,       href: "/restaurant/analytics" },
 ];
 
 const NAV_SETTINGS = [
   { label: "Settings", icon: Settings, href: "/restaurant/edit/order-settings" },
-  { label: "Profile", icon: User, href: "/restaurant/edit/basic-info" }, // Fixed Double Slash Bug
+  { label: "Profile",  icon: User,     href: "/restaurant/profile" },
 ];
 
 export default function Dashboard() {
   const router = useRouter();
-  // Using centralized auth hook
   const { restaurant, loading: authLoading, restaurantId } = useRestaurantAuth();
-  
-  const [onboarding, setOnboarding] = useState(null);
-  const [liveCheck, setLiveCheck] = useState(null);
-  const [itemCount, setItemCount] = useState(0);
-  const [catCount, setCatCount] = useState(0);
+
+  const [onboarding,  setOnboarding]  = useState(null);
+  const [liveCheck,   setLiveCheck]   = useState(null);
+  const [itemCount,   setItemCount]   = useState(0);
+  const [catCount,    setCatCount]    = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!restaurantId) return;
-
-    // Fetch dashboard specific data
     Promise.all([
       getOnboardingStatus(restaurantId),
       goLiveCheck(restaurantId),
@@ -62,34 +59,47 @@ export default function Dashboard() {
     router.push("/restaurant/login");
   };
 
-  // Show loader while auth or data is fetching
   if (authLoading || dataLoading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 className="animate-spin text-orange-500" size={36} />
+    <div style={{ minHeight: "100vh", background: "#eef5f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <UtensilsCrossed size={22} color="white" />
+        </div>
+        <Loader2 size={24} color="#1a6b3a" style={{ animation: "spin 1s linear infinite" }} />
+      </div>
     </div>
   );
 
   const completionPercent = onboarding?.completion_percent || 0;
-  const isLive = liveCheck?.ready_for_launch;
-  const ownerInitials = restaurant?.owner_name
-    ?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "R";
-
-  const today = new Date().toLocaleDateString("en-IN", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric"
-  });
+  const isLive            = liveCheck?.ready_for_launch;
+  const ownerInitials     = restaurant?.owner_name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "R";
+  const today             = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const checklist = [
-    { label: "Basic restaurant info", desc: "Name, location, type configured" },
-    { label: "Operational settings", desc: "Hours and availability set" },
-    { label: "Menu items", desc: `${itemCount} item${itemCount !== 1 ? "s" : ""} added` },
+    { label: "Basic restaurant info",    desc: "Name, location, type configured" },
+    { label: "Operational settings",     desc: "Hours and availability set" },
+    { label: "Menu items",               desc: `${itemCount} item${itemCount !== 1 ? "s" : ""} added` },
     { label: "Order & payment settings", desc: "Payment method configured" },
   ];
 
   const quickActions = [
-    { label: "Edit basic info", desc: "Update restaurant details", href: "/restaurant/edit/basic-info", icon: PenLine },
-    { label: "Manage menu", desc: "Add, edit or toggle items", href: "/restaurant/edit/menu", icon: BookOpen },
-    { label: "Order settings", desc: "Payment & delivery config", href: "/restaurant/edit/order-settings", icon: Settings },
-    { label: "View analytics", desc: "Orders, revenue & trends", href: "/restaurant/analytics", icon: BarChart2 },
+    { label: "Edit basic info",  desc: "Update restaurant details",   href: "/restaurant/edit/basic-info",     icon: PenLine,   iconBg: "#1a6b3a", cardBg: "#f4faf6", border: "#cde8d6" },
+    { label: "Manage menu",      desc: "Add, edit or toggle items",   href: "/restaurant/edit/menu",           icon: BookOpen,  iconBg: "#d97706", cardBg: "#fefdf4", border: "#f0e4a0" },
+    { label: "Order settings",   desc: "Payment & delivery config",   href: "/restaurant/edit/order-settings", icon: Settings,  iconBg: "#db2777", cardBg: "#fff5f9", border: "#fbc8dc" },
+    { label: "View analytics",   desc: "Orders, revenue & trends",    href: "/restaurant/analytics",           icon: BarChart2, iconBg: "#4f46e5", cardBg: "#f5f4ff", border: "#c4bffa" },
+  ];
+
+  const stats = [
+    { label: "MENU ITEMS",   value: itemCount, icon: BookOpen,    cardBg: "#f4faf6", iconBg: "#1a6b3a", valColor: "#1a2e1f", labelColor: "#6aad7a" },
+    { label: "CATEGORIES",   value: catCount,  icon: ChefHat,     cardBg: "#fefdf0", iconBg: "#d97706", valColor: "#3d2a00", labelColor: "#b08030" },
+    { label: "ORDERS TODAY", value: 0,         icon: ShoppingBag, cardBg: "#fff5f8", iconBg: "#db2777", valColor: "#4a0a28", labelColor: "#d05080" },
+    {
+      label: "SETUP STATUS",
+      value: isLive ? "Live" : `${completionPercent}%`,
+      icon: TrendingUp,
+      cardBg: "#f3f2ff", iconBg: "#4f46e5", valColor: "#1e1a5e", labelColor: "#7068c8",
+    },
   ];
 
   return (
@@ -98,206 +108,316 @@ export default function Dashboard() {
         <title>Dashboard | Menuify</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <style>{`
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #eef5f0; font-family: 'Inter', sans-serif; }
+          @keyframes spin  { to { transform: rotate(360deg); } }
+          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+          .stat-card { transition: transform 0.18s, box-shadow 0.18s; }
+          .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.09) !important; }
+
+          .action-link { text-decoration: none; display: flex; transition: transform 0.16s, box-shadow 0.16s; }
+          .action-link:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.09) !important; }
+
+          .nav-link { text-decoration: none; display: flex; transition: background 0.15s, color 0.15s; }
+          .nav-link:hover { background: #e6f4ec !important; color: #1a6b3a !important; }
+
+          .logout-btn { border: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
+          .logout-btn:hover { background: #fff0f3 !important; color: #e11d48 !important; }
+
+          .progress-fill { background: linear-gradient(90deg, #1a6b3a, #34d058); }
+
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-thumb { background: #b8d8c4; border-radius: 4px; }
+        `}</style>
       </Head>
 
-      <div style={{ fontFamily: "'DM Sans', sans-serif" }} className="min-h-screen bg-gray-50 flex">
+      <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#eef5f0", display: "flex" }}>
 
-        {/* Sidebar */}
-        <aside className="fixed top-0 left-0 bottom-0 w-56 bg-white border-r border-gray-100 flex flex-col z-20 shadow-sm">
-          <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
-            <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center flex-shrink-0">
-              <UtensilsCrossed size={16} className="text-white" />
+        {/* ── Sidebar ── */}
+        <aside style={{
+          position: "fixed", top: 0, left: 0, bottom: 0, width: 260,
+          background: "#ffffff", borderRight: "1.5px solid #dceee3",
+          display: "flex", flexDirection: "column", zIndex: 20,
+        }}>
+          {/* Logo */}
+          <div style={{ padding: "22px 22px 18px", borderBottom: "1.5px solid #edf6f0", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <UtensilsCrossed size={18} color="white" />
             </div>
             <div>
-              <p style={{ fontFamily: "'Syne', sans-serif" }} className="text-sm font-bold text-gray-900 leading-tight">
-                Menuify
-              </p>
-              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Restaurant OS</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>Menuify</p>
+              <p style={{ fontSize: 9, fontWeight: 700, color: "#6aad7a", textTransform: "uppercase", letterSpacing: "0.14em" }}>Restaurant OS</p>
             </div>
           </div>
 
-          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Main</p>
+          {/* Nav links */}
+          <nav style={{ flex: 1, padding: "20px 14px", overflowY: "auto" }}>
+            <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Navigation</p>
+
             {NAV_MAIN.map((item) => {
               const active = router.pathname === item.href;
               return (
-                <Link key={item.label} href={item.href}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all
-                    ${active
-                      ? "bg-orange-50 text-orange-600 font-bold"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}
-                >
-                  <item.icon size={16} className={active ? "text-orange-500" : "text-gray-400"} />
-                  {item.label}
+                <Link key={item.label} href={item.href} className="nav-link" style={{
+                  alignItems: "center", gap: 11, width: "100%",
+                  padding: "11px 12px", borderRadius: 12, fontSize: 14,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? "#1a6b3a" : "#4a7a58",
+                  background: active ? "#e6f4ec" : "transparent",
+                  marginBottom: 3,
+                }}>
+                  <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {active && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
                 </Link>
               );
             })}
 
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mt-6 mb-2">Settings</p>
+            <div style={{ borderTop: "1.5px solid #edf6f0", margin: "16px 0 14px" }} />
+            <p style={{ fontSize: 9, fontWeight: 800, color: "#9dbeaa", textTransform: "uppercase", letterSpacing: "0.16em", padding: "0 10px", marginBottom: 10 }}>Settings</p>
+
             {NAV_SETTINGS.map((item) => {
               const active = router.pathname === item.href;
               return (
-                <Link key={item.label} href={item.href}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all
-                    ${active
-                      ? "bg-orange-50 text-orange-600 font-bold"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"}`}
-                >
-                  <item.icon size={16} className={active ? "text-orange-500" : "text-gray-400"} />
-                  {item.label}
+                <Link key={item.label} href={item.href} className="nav-link" style={{
+                  alignItems: "center", gap: 11, width: "100%",
+                  padding: "11px 12px", borderRadius: 12, fontSize: 14,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? "#1a6b3a" : "#4a7a58",
+                  background: active ? "#e6f4ec" : "transparent",
+                  marginBottom: 3,
+                }}>
+                  <item.icon size={16} color={active ? "#1a6b3a" : "#9dbeaa"} />
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {active && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a6b3a" }} />}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="px-3 py-4 border-t border-gray-100">
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-sm text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all font-medium"
-            >
-              <LogOut size={16} />
-              Logout
+          {/* User card + logout */}
+          <div style={{ padding: "14px 14px 18px", borderTop: "1.5px solid #edf6f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: "#f2f9f4", marginBottom: 6 }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                {ownerInitials}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#1a2e1f", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{restaurant?.owner_name}</p>
+                <p style={{ fontSize: 11, color: "#9dbeaa", textTransform: "capitalize" }}>{restaurant?.business_type?.replace("_", " ")}</p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="logout-btn" style={{
+              display: "flex", alignItems: "center", gap: 9, width: "100%",
+              padding: "9px 12px", borderRadius: 12, fontSize: 13, color: "#9dbeaa",
+              background: "transparent", fontWeight: 500, fontFamily: "'Inter', sans-serif",
+            }}>
+              <LogOut size={15} />
+              Sign out
             </button>
           </div>
         </aside>
 
-        {/* Main content */}
-        <div className="ml-56 flex-1 min-w-0">
-          <main className="max-w-4xl mx-auto px-8 py-8 space-y-6">
+        {/* ── Main Content ── */}
+        <div style={{ marginLeft: 260, flex: 1, minWidth: 0 }}>
+          <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 32px 60px", display: "flex", flexDirection: "column", gap: 22 }}>
 
-            {/* Header */}
-            <div className="flex items-start justify-between">
+            {/* Topbar */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
-                <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="text-2xl font-bold text-gray-900">
-                  Dashboard
-                </h1>
-                <p className="text-sm text-gray-400 mt-0.5">{today}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L14.4 9.6H22.4L16 14.4L18.4 22L12 17.2L5.6 22L8 14.4L1.6 9.6H9.6L12 2Z" fill="#1a6b3a" />
+                  </svg>
+                  <p style={{ fontSize: 12, color: "#6aad7a", fontWeight: 500 }}>{today}</p>
+                </div>
+                <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Dashboard</h1>
               </div>
-              <div className="flex items-center gap-3">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {isLive ? (
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-green-50 text-green-600 border border-green-100">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 999, background: "white", color: "#166534", border: "1.5px solid #bbf7d0" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
                     Live & Accepting Orders
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                    Setup Mode
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 999, background: "white", color: "#92600a", border: "1.5px solid #e0cc80" }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706" }} />
+                    Setup in Progress
                   </span>
                 )}
-                <div className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-orange-200">
+                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 13, fontWeight: 800 }}>
                   {ownerInitials}
                 </div>
               </div>
             </div>
 
-            {/* Welcome Banner */}
-            <div className="relative overflow-hidden rounded-3xl bg-orange-500 px-8 py-8 flex items-center justify-between shadow-xl shadow-orange-100">
-              <div className="absolute right-0 top-0 w-64 h-64 rounded-full bg-white/10 -translate-y-1/3 translate-x-1/4" />
-              <div className="absolute right-20 bottom-0 w-32 h-32 rounded-full bg-white/5 translate-y-1/2" />
+            {/* Hero Banner */}
+            <div style={{
+              position: "relative", overflow: "hidden", borderRadius: 24,
+              background: "linear-gradient(135deg, #0f3d20 0%, #1a6b3a 50%, #22a855 100%)",
+              padding: "38px 44px", boxShadow: "0 16px 48px rgba(26,107,58,0.22)",
+            }}>
+              <div style={{ position: "absolute", top: -20, right: 260, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -40, right: 180, width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", bottom: -30, right: 320, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.08)", pointerEvents: "none" }} />
 
-              <div className="relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2">Welcome back,</p>
-                <h2 style={{ fontFamily: "'Syne', sans-serif" }} className="text-3xl font-bold text-white mb-2">
-                  {restaurant?.owner_name} 👋
-                </h2>
-                <div className="flex items-center gap-2 text-sm text-white/80 font-medium">
-                  <span className="px-2 py-0.5 bg-white/20 rounded-md capitalize">{restaurant?.city}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/40" />
-                  <span className="capitalize">{restaurant?.business_type?.replace("_", " ")}</span>
+              <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+                    <Flame size={13} color="#fde047" />
+                    <p style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.2em" }}>Welcome Back</p>
+                  </div>
+                  <h2 style={{ fontSize: 42, fontWeight: 800, color: "white", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 18 }}>
+                    {restaurant?.name} 🍽️
+                  </h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ padding: "5px 14px", borderRadius: 8, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)", fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>
+                      {restaurant?.city}
+                    </span>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.3)" }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 500, textTransform: "capitalize" }}>
+                      {restaurant?.business_type?.replace("_", " ")}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="relative z-10 text-right bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-                <p className="text-[10px] text-white/70 uppercase font-bold tracking-widest mb-1">Onboarding</p>
-                <p style={{ fontFamily: "'Syne', sans-serif" }} className="text-4xl font-bold text-white">
-                  {completionPercent}%
-                </p>
+                {/* Circular progress ring */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <div style={{ position: "relative", width: 130, height: 130 }}>
+                    <svg style={{ width: 130, height: 130, transform: "rotate(-90deg)" }} viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
+                      <circle
+                        cx="50" cy="50" r="40" fill="none"
+                        stroke="#fde047" strokeWidth="7" strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 40}`}
+                        strokeDashoffset={`${2 * Math.PI * 40 * (1 - completionPercent / 100)}`}
+                        style={{ transition: "stroke-dashoffset 1.2s ease", filter: "drop-shadow(0 0 6px rgba(253,224,71,0.6))" }}
+                      />
+                    </svg>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <p style={{ fontSize: 30, fontWeight: 800, color: "white", lineHeight: 1 }}>
+                        {completionPercent}<span style={{ fontSize: 16, fontWeight: 700 }}>%</span>
+                      </p>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.2em" }}>Onboarding</p>
+                </div>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: "Menu items", value: itemCount, icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50" },
-                { label: "Categories", value: catCount, icon: ChefHat, color: "text-purple-500", bg: "bg-purple-50" },
-                { label: "Orders today", value: 0, icon: ShoppingBag, color: "text-orange-500", bg: "bg-orange-50" },
-                { label: "Setup Status", value: isLive ? "Live" : "Steps", icon: isLive ? CheckCircle2 : Circle, color: isLive ? "text-green-500" : "text-gray-400", bg: isLive ? "bg-green-50" : "bg-gray-50" },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center mb-4`}>
-                    <stat.icon size={18} className={stat.color} />
+            {/* Stat Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+              {stats.map((stat) => (
+                <div key={stat.label} className="stat-card" style={{
+                  background: stat.cardBg, borderRadius: 20, padding: "24px",
+                  border: "1.5px solid rgba(255,255,255,0.9)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+                }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 14, background: stat.iconBg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                    <stat.icon size={20} color="white" />
                   </div>
-                  <p style={{ fontFamily: "'Syne', sans-serif" }} className="text-2xl font-bold text-gray-900 mb-0.5">{stat.value}</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{stat.label}</p>
+                  <p style={{ fontSize: 38, fontWeight: 800, color: stat.valColor, letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 8 }}>{stat.value}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: stat.labelColor, textTransform: "uppercase", letterSpacing: "0.1em" }}>{stat.label}</p>
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Checklist */}
-              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 style={{ fontFamily: "'Syne', sans-serif" }} className="text-sm font-bold text-gray-900 uppercase tracking-tight">
-                    Go-live checklist
-                  </h3>
+            {/* Bottom Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+
+              {/* Go-live Checklist */}
+              <div style={{ background: "white", borderRadius: 22, padding: "26px", border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <CheckCircle2 size={17} color="#1a6b3a" />
+                    </div>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Go-live Checklist</h3>
+                  </div>
                   {completionPercent === 100 && (
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-100 uppercase tracking-wider">
-                      Ready to Launch
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#1a6b3a", background: "#e6f4ec", padding: "4px 12px", borderRadius: 999, border: "1.5px solid #b8ddc4" }}>
+                      Ready ✓
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-4">
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {checklist.map((item, i) => {
                     const done = onboarding?.steps?.[i]?.completed ?? (completionPercent === 100);
                     return (
-                      <div key={item.label} className="flex items-center gap-4 group">
-                        {done ? <CheckCircle2 size={20} className="text-green-500 shrink-0" /> : <Circle size={20} className="text-gray-200 shrink-0" />}
-                        <div className="min-w-0">
-                          <p className={`text-sm font-bold ${done ? "text-gray-800" : "text-gray-400"}`}>{item.label}</p>
-                          <p className="text-[11px] text-gray-400 truncate">{item.desc}</p>
+                      <div key={item.label} style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "11px 14px", borderRadius: 14,
+                        background: done ? "#f4faf6" : "#fafafa",
+                        border: `1.5px solid ${done ? "#cde8d6" : "#f0ece8"}`,
+                      }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: done ? "#1a6b3a" : "transparent",
+                          border: done ? "none" : "2px solid #d4d0ca",
+                          boxShadow: done ? "0 2px 8px rgba(26,107,58,0.25)" : "none",
+                        }}>
+                          {done && <CheckCircle2 size={13} color="white" strokeWidth={2.5} />}
                         </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: done ? 600 : 500, color: done ? "#1a2e1f" : "#b0a898" }}>{item.label}</p>
+                          <p style={{ fontSize: 11, color: done ? "#7aad8a" : "#c8c0b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</p>
+                        </div>
+                        {done && <Zap size={12} color="#1a6b3a" fill="#1a6b3a" style={{ flexShrink: 0 }} />}
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-gray-50">
-                   <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                    <span>Progress</span>
-                    <span>{completionPercent}%</span>
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1.5px solid #edf6f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
+                    <span style={{ color: "#9dbeaa" }}>Progress</span>
+                    <span style={{ color: "#1a6b3a" }}>{completionPercent}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-orange-500 rounded-full transition-all duration-1000" style={{ width: `${completionPercent}%` }} />
+                  <div style={{ height: 7, background: "#e6f4ec", borderRadius: 999, overflow: "hidden" }}>
+                    <div className="progress-fill" style={{ height: "100%", width: `${completionPercent}%`, borderRadius: 999, transition: "width 1.2s ease" }} />
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-                <h3 style={{ fontFamily: "'Syne', sans-serif" }} className="text-sm font-bold text-gray-900 uppercase tracking-tight mb-6">
-                  Quick actions
-                </h3>
-                <div className="space-y-2.5">
+              {/* Quick Actions */}
+              <div style={{ background: "white", borderRadius: 22, padding: "26px", border: "1.5px solid #dceee3", boxShadow: "0 2px 16px rgba(0,0,0,0.04)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Zap size={17} color="#1a6b3a" fill="#1a6b3a" />
+                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Quick Actions</h3>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                   {quickActions.map((action) => (
-                    <Link key={action.label} href={action.href}
-                      className="flex items-center gap-3 p-3 border border-gray-100 rounded-2xl hover:border-orange-200 hover:bg-orange-50/50 transition-all group"
+                    <Link
+                      key={action.label}
+                      href={action.href}
+                      className="action-link"
+                      style={{
+                        alignItems: "center", gap: 14,
+                        padding: "12px 14px", borderRadius: 14,
+                        background: action.cardBg, border: `1.5px solid ${action.border}`,
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                      }}
                     >
-                      <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-orange-100 group-hover:text-orange-600 transition-colors text-gray-500">
-                        <action.icon size={16} />
+                      <div style={{ width: 38, height: 38, borderRadius: 12, background: action.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 3px 10px rgba(0,0,0,0.15)" }}>
+                        <action.icon size={16} color="white" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-800">{action.label}</p>
-                        <p className="text-[11px] text-gray-400">{action.desc}</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{action.label}</p>
+                        <p style={{ fontSize: 11, color: "#9dbeaa" }}>{action.desc}</p>
                       </div>
-                      <ArrowRight size={14} className="text-gray-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                      <ArrowRight size={15} color="#9dbeaa" style={{ flexShrink: 0 }} />
                     </Link>
                   ))}
                 </div>
               </div>
-            </div>
 
+            </div>
           </main>
         </div>
       </div>

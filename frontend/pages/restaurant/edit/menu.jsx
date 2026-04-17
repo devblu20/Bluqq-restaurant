@@ -2,51 +2,34 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import toast from "react-hot-toast";
-import RestaurantLayout from "../../../components/OnboardingLayout";
-import { 
-  getMe, 
-  getMenuItems, 
-  getCategories, 
-  createMenuItem, 
-  updateMenuItem, 
-  createCategory,
-  uploadMenuImage,
-  deleteMenuItem // Add this import
+import {
+  getMe, getMenuItems, getCategories, createMenuItem,
+  updateMenuItem, createCategory, uploadMenuImage, deleteMenuItem
 } from "../../../services/api";
 import {
-  Loader2, Plus, PenLine, X, Search,
-  ChefHat, ImageIcon, ToggleLeft, ToggleRight,
-  Tag, FolderPlus, Save, ArrowLeft, Upload, Sparkles, ScanLine, Trash2
+  Loader2, Plus, PenLine, X, Search, ChefHat, ImageIcon,
+  ToggleLeft, ToggleRight, FolderPlus, Save, Upload, Sparkles,
+  Trash2, UtensilsCrossed, Tag, ChevronLeft,
 } from "lucide-react";
 
-const inputCls = "w-full px-3.5 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-300 transition-all";
-
-/* ── AI Menu Scanner Component ── */
+/* ── AI Scanner ── */
 function MenuScanner({ restaurantId, onScanComplete }) {
   const [scanning, setScanning] = useState(false);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error("Please upload an image file");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image file"); return; }
     setScanning(true);
     const formData = new FormData();
     formData.append("file", file);
-
-    const toastId = toast.loading("AI is reading your menu... Please wait.");
-
+    const toastId = toast.loading("AI is reading your menu...");
     try {
       await uploadMenuImage(restaurantId, formData);
-      toast.success("Menu scanned successfully! Items added.", { id: toastId });
-      onScanComplete(); 
-    } catch (err) {
-      console.error(err);
-      toast.error("AI Scan failed. Please try a clearer photo.", { id: toastId });
+      toast.success("Menu scanned! Items added.", { id: toastId });
+      onScanComplete();
+    } catch {
+      toast.error("Scan failed. Try a clearer photo.", { id: toastId });
     } finally {
       setScanning(false);
       e.target.value = null;
@@ -54,87 +37,148 @@ function MenuScanner({ restaurantId, onScanComplete }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl p-6 mb-10 shadow-xl shadow-orange-100 relative overflow-hidden group">
-      <ScanLine size={120} className="absolute -right-4 -bottom-4 text-white/10 group-hover:rotate-12 transition-transform duration-500" />
-      <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
-          {scanning ? <Loader2 className="animate-spin" size={30} /> : <Sparkles size={30} className="animate-pulse" />}
+    <div style={{
+      position: "relative", overflow: "hidden", borderRadius: 22,
+      background: "linear-gradient(135deg, #0f3d20 0%, #1a6b3a 50%, #22a855 100%)",
+      padding: "32px 36px", marginBottom: 28,
+      boxShadow: "0 12px 40px rgba(26,107,58,0.2)",
+    }}>
+      <div style={{ position: "absolute", top: -20, right: 120, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: -30, right: 60, width: 90, height: 90, borderRadius: "50%", background: "rgba(0,0,0,0.08)", pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ width: 56, height: 56, borderRadius: 18, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {scanning ? <Loader2 size={26} color="white" style={{ animation: "spin 1s linear infinite" }} /> : <Sparkles size={26} color="white" />}
         </div>
-        <div className="flex-1 text-center md:text-left">
-          <h3 style={{ fontFamily: "'Syne', sans-serif" }} className="text-xl font-bold text-white">Smart AI Scanner</h3>
-          <p className="text-orange-100 text-sm mt-1">Upload a photo of your paper menu. AI will auto-extract dishes & prices.</p>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <p style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 6 }}>AI Powered</p>
+          <h3 style={{ fontSize: 20, fontWeight: 800, color: "white", marginBottom: 4 }}>Smart Menu Scanner</h3>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>Upload a photo of your paper menu — AI extracts dishes & prices automatically.</p>
         </div>
-        <label className="cursor-pointer flex items-center gap-3 px-8 py-4 bg-white text-orange-600 font-bold rounded-2xl hover:bg-orange-50 transition-all active:scale-95 shadow-lg group">
-          <Upload size={20} className="group-hover:-translate-y-1 transition-transform" />
+        <label style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "14px 24px",
+          background: "white", color: "#1a6b3a", fontWeight: 800, fontSize: 14,
+          borderRadius: 14, cursor: "pointer", flexShrink: 0,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.15)", transition: "transform 0.15s",
+        }}>
+          <Upload size={18} />
           {scanning ? "Processing..." : "Scan Menu Photo"}
-          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={scanning} />
+          <input type="file" style={{ display: "none" }} accept="image/*" onChange={handleFileChange} disabled={scanning} />
         </label>
       </div>
     </div>
   );
 }
 
-/* ── Item card ── */
+/* ── Item Card ── */
 function MenuItemCard({ item, categories, onEdit, onToggle, onDelete }) {
   const cat = categories.find(c => c.id === item.category_id);
   return (
-    <div className={`bg-white border rounded-2xl p-4 transition-all hover:shadow-md ${item.is_available ? "border-gray-100 shadow-sm" : "border-gray-100 opacity-60 bg-gray-50/30"}`}>
-      <div className="flex items-start gap-3">
-        <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner">
+    <div style={{
+      background: item.is_available ? "white" : "#fafafa",
+      padding: "12px 14px",   // 🔥 reduce spacing
+borderRadius: 14, border: "1.5px solid #e8f0eb",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+      opacity: item.is_available ? 1 : 0.65,
+      transition: "transform 0.16s, box-shadow 0.16s",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.09)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.04)"; }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: "#f2f9f4", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
           {item.image_url
-            ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-            : <ImageIcon size={18} className="text-gray-300" />}
+            ? <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <ImageIcon size={20} color="#9dbeaa" />}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
-              {item.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 italic">{item.description}</p>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</p>
+              {item.description && <p style={{ fontSize: 11, color: "#9dbeaa", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>{item.description}</p>}
             </div>
-            <div className="flex gap-1 flex-shrink-0">
-              <button onClick={() => onEdit(item)}
-                className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-blue-50 flex items-center justify-center transition-colors group">
-                <PenLine size={12} className="text-gray-400 group-hover:text-blue-500" />
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button onClick={() => onEdit(item)} style={{
+                width: 30, height: 30, borderRadius: 10, background: "#f2f9f4", border: "1.5px solid #dceee3",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s",
+              }} onMouseEnter={e => e.currentTarget.style.background = "#e6f4ec"} onMouseLeave={e => e.currentTarget.style.background = "#f2f9f4"}>
+                <PenLine size={13} color="#1a6b3a" />
               </button>
-              {/* DELETE ICON ADDED HERE */}
-              <button onClick={() => onDelete(item)}
-                className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-red-50 flex items-center justify-center transition-colors group">
-                <Trash2 size={12} className="text-gray-400 group-hover:text-red-500" />
+              <button onClick={() => onDelete(item)} style={{
+                width: 30, height: 30, borderRadius: 10, background: "#fff5f5", border: "1.5px solid #fecaca",
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s",
+              }} onMouseEnter={e => e.currentTarget.style.background = "#fee2e2"} onMouseLeave={e => e.currentTarget.style.background = "#fff5f5"}>
+                <Trash2 size={13} color="#ef4444" />
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-sm font-bold text-orange-500">₹{item.price}</span>
-            {cat && <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full border border-gray-200 font-bold">{cat.name}</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#1a6b3a" }}>
+  ₹{item.price}
+</span>
+
+{cat && (
+  <span style={{
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "3px 10px",
+    background: "#f2f9f4",
+    borderRadius: 999
+  }}>
+    {cat.name}
+  </span>
+)}
+
+{/* 🔥 TAGS */}
+{item.tags?.map((tag, i) => (
+  <span key={i} style={{
+    fontSize: 10,
+    padding: "3px 8px",
+    borderRadius: 999,
+    background: tag === "veg" ? "#dcfce7" : "#fee2e2",
+    color: tag === "veg" ? "#166534" : "#991b1b"
+  }}>
+    {tag}
+  </span>
+))}
+
+{/* 🔥 CUISINE */}
+{item.cuisine_type && (
+  <span style={{
+    fontSize: 10,
+    padding: "3px 8px",
+    borderRadius: 999,
+    background: "#eef2ff",
+    color: "#3730a3"
+  }}>
+    {item.cuisine_type}
+  </span>
+)}
+            
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-        <span className={`text-[10px] font-bold uppercase ${item.is_available ? "text-green-500" : "text-gray-400"}`}>
-          {item.is_available ? "In Stock" : "Out of Stock"}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid #edf6f0" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: item.is_available ? "#1a6b3a" : "#9ca3af" }}>
+          {item.is_available ? "● In Stock" : "○ Out of Stock"}
         </span>
-        <button type="button" onClick={() => onToggle(item)}
-          className={`transition-all duration-300 ${item.is_available ? "text-orange-500" : "text-gray-300"}`}>
-          {item.is_available ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+        <button onClick={() => onToggle(item)} style={{ background: "none", border: "none", cursor: "pointer", color: item.is_available ? "#1a6b3a" : "#d1d5db", transition: "color 0.2s" }}>
+          {item.is_available ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
         </button>
       </div>
     </div>
   );
 }
 
-/* ── Add/Edit modal ── */
+/* ── Add/Edit Modal ── */
 function ItemModal({ item, categories, onClose, onSave }) {
   const isEdit = !!item?.id;
   const [form, setForm] = useState({
-    name: item?.name || "",
-    description: item?.description || "",
-    price: item?.price || "",
-    category_id: item?.category_id || (categories[0]?.id || ""),
-    is_available: item?.is_available ?? true,
-    image_url: item?.image_url || "",
+    name: item?.name || "", description: item?.description || "",
+    price: item?.price || "", category_id: item?.category_id || (categories[0]?.id || ""),
+    is_available: item?.is_available ?? true, image_url: item?.image_url || "",
   });
   const [saving, setSaving] = useState(false);
-
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
 
   const handleSubmit = async (e) => {
@@ -145,24 +189,53 @@ function ItemModal({ item, categories, onClose, onSave }) {
     setSaving(false);
   };
 
+  const inputStyle = {
+    width: "100%", padding: "10px 14px", fontSize: 14,
+    background: "#f8fdfb", border: "1.5px solid #dceee3", borderRadius: 12,
+    color: "#111827", outline: "none", fontFamily: "'Inter', sans-serif",
+    transition: "border-color 0.15s",
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-          <h3 className="font-bold text-gray-900 text-lg">{isEdit ? "Update Menu Item" : "Add New Dish"}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 text-gray-400 transition-all"><X size={20} /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div><label className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 block">Item name *</label><input className={inputCls} value={form.name} onChange={set("name")} required /></div>
-          <div><label className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 block">Description</label><textarea className={inputCls + " resize-none h-20"} value={form.description} onChange={set("description")} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 block">Price (₹) *</label><input className={inputCls} type="number" value={form.price} onChange={set("price")} required /></div>
-            <div><label className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 block">Category</label><select className={inputCls} value={form.category_id} onChange={set("category_id")}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div style={{ background: "white", borderRadius: 24, width: "100%", maxWidth: 440, boxShadow: "0 24px 64px rgba(0,0,0,0.18)", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: "1.5px solid #edf6f0", background: "#f8fdfb" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ChefHat size={16} color="white" />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{isEdit ? "Update Dish" : "Add New Dish"}</h3>
           </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 py-3.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600">Cancel</button>
-            <button type="submit" disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold bg-orange-500 text-white shadow-lg flex items-center justify-center gap-2">
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {isEdit ? "Update Dish" : "Add to Menu"}
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#f0f0f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X size={16} color="#6b7280" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Item Name *</label>
+            <input style={inputStyle} value={form.name} onChange={set("name")} required />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Description</label>
+            <textarea style={{ ...inputStyle, resize: "none", height: 80 }} value={form.description} onChange={set("description")} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Price (₹) *</label>
+              <input style={inputStyle} type="number" value={form.price} onChange={set("price")} required />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6aad7a", marginBottom: 6, display: "block" }}>Category</label>
+              <select style={inputStyle} value={form.category_id} onChange={set("category_id")}>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, paddingTop: 8 }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: "12px", borderRadius: 12, fontSize: 14, fontWeight: 700, border: "1.5px solid #dceee3", background: "white", color: "#4a7a58", cursor: "pointer" }}>Cancel</button>
+            <button type="submit" disabled={saving} style={{ flex: 1, padding: "12px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: "#1a6b3a", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 16px rgba(26,107,58,0.3)" }}>
+              {saving ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={16} />}
+              {isEdit ? "Update Dish" : "Add to Menu"}
             </button>
           </div>
         </form>
@@ -171,16 +244,16 @@ function ItemModal({ item, categories, onClose, onSave }) {
   );
 }
 
-/* ── Main page ── */
+/* ── Main Page ── */
 export default function EditMenuPage() {
   const router = useRouter();
-  const [restaurant, setRestaurant] = useState(null);
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("all");
-  const [modal, setModal] = useState(null); 
+  const [filterTag, setFilterTag] = useState("all");
+  const [modal, setModal] = useState(null);
   const [newCatName, setNewCatName] = useState("");
   const [addingCat, setAddingCat] = useState(false);
   const [showCatInput, setShowCatInput] = useState(false);
@@ -189,11 +262,10 @@ export default function EditMenuPage() {
 
   const fetchData = useCallback(async (id) => {
     try {
-      const [meRes, itemRes, catRes] = await Promise.all([getMe(), getMenuItems(id), getCategories(id)]);
-      setRestaurant(meRes.data);
+      const [itemRes, catRes] = await Promise.all([getMenuItems(id), getCategories(id)]);
       setItems(itemRes.data || []);
       setCategories(catRes.data || []);
-    } catch (err) {
+    } catch {
       toast.error("Fetch failed");
       router.replace("/restaurant/login");
     } finally {
@@ -219,7 +291,7 @@ export default function EditMenuPage() {
         toast.success(`"${res.data.name}" added!`);
       }
       setModal(null);
-    } catch (err) {
+    } catch {
       toast.error("Failed to save item");
     }
   };
@@ -228,21 +300,16 @@ export default function EditMenuPage() {
     try {
       const res = await updateMenuItem(restaurantId, item.id, { is_available: !item.is_available });
       setItems(prev => prev.map(i => i.id === item.id ? res.data : i));
-    } catch {
-      toast.error("Update failed");
-    }
+    } catch { toast.error("Update failed"); }
   };
 
-  // DELETE HANDLER
   const handleDeleteItem = async (item) => {
     if (!window.confirm(`Delete "${item.name}" from your menu?`)) return;
     try {
       await deleteMenuItem(restaurantId, item.id);
       setItems(prev => prev.filter(i => i.id !== item.id));
       toast.success("Dish removed");
-    } catch {
-      toast.error("Could not delete dish");
-    }
+    } catch { toast.error("Could not delete dish"); }
   };
 
   const handleAddCategory = async () => {
@@ -251,57 +318,187 @@ export default function EditMenuPage() {
     try {
       const res = await createCategory(restaurantId, { name: newCatName });
       setCategories(prev => [...prev, res.data]);
-      setNewCatName("");
-      setShowCatInput(false);
+      setNewCatName(""); setShowCatInput(false);
       toast.success("Category created");
-    } catch {
-      toast.error("Failed to add category");
-    } finally {
-      setAddingCat(false);
-    }
+    } catch { toast.error("Failed to add category"); }
+    finally { setAddingCat(false); }
   };
 
-  const filtered = items.filter(item => {
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCat === "all" || item.category_id === filterCat;
-    return matchSearch && matchCat;
-  });
+  const filtered = items.filter(item =>
+  item.name.toLowerCase().includes(search.toLowerCase()) &&
+  (filterCat === "all" || item.category_id === filterCat) &&
+  (filterTag === "all" || item.tags?.includes(filterTag))
+);
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="animate-spin text-orange-500" size={32} /></div>;
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#eef5f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a6b3a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <UtensilsCrossed size={22} color="white" />
+        </div>
+        <Loader2 size={24} color="#1a6b3a" style={{ animation: "spin 1s linear infinite" }} />
+      </div>
+    </div>
+  );
 
   return (
     <>
-      <Head><title>Menu Management | Dashboard</title></Head>
-      <RestaurantLayout restaurant={restaurant} onLogout={() => {localStorage.clear(); router.push("/restaurant/login")}}>
-        <main className="max-w-4xl mx-auto px-7 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-4 border-b">
+      <Head>
+        <title>Menu Management | Menuify</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <style>{`
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { background: #eef5f0; font-family: 'Inter', sans-serif; }
+          @keyframes spin { to { transform: rotate(360deg); } }
+          ::-webkit-scrollbar { width: 4px; }
+          ::-webkit-scrollbar-thumb { background: #b8d8c4; border-radius: 4px; }
+        `}</style>
+      </Head>
+
+      <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", background: "#eef5f0" }}>
+        <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 32px 60px", display: "flex", flexDirection: "column", gap: 22 }}>
+
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <button
+              onClick={() => router.push("/restaurant/dashboard")}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6aad7a", fontWeight: 600, background: "none", border: "none", cursor: "pointer", marginBottom: 14, padding: 0, fontFamily: "'Inter', sans-serif" }}
+            >
+              <ChevronLeft size={15} /> Back to Dashboard
+            </button>
             <div>
-              <h1 style={{ fontFamily: "'Syne', sans-serif" }} className="text-3xl font-bold text-gray-900 leading-tight">Manage Menu</h1>
-              <p className="text-sm text-gray-500">{items.length} dishes in your menu</p>
+              <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>Menu Management</h1>
+              <p style={{ fontSize: 13, color: "#6aad7a", marginTop: 4, fontWeight: 500 }}>
+                {items.length} dish{items.length !== 1 ? "es" : ""} in your menu
+              </p>
             </div>
-            <button onClick={() => setModal({})} className="flex items-center gap-2 px-6 py-3 bg-orange-500 text-white font-bold rounded-2xl shadow-lg hover:bg-orange-600 transition-all active:scale-95"><Plus size={20} /> Add Manually</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={() => setShowCatInput(v => !v)}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, background: "white", border: "1.5px solid #dceee3", color: "#1a6b3a", fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "background 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#f2f9f4"}
+                onMouseLeave={e => e.currentTarget.style.background = "white"}
+              >
+                <Tag size={15} /> Add Category
+              </button>
+              <button
+                onClick={() => setModal({})}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 12, background: "#1a6b3a", color: "white", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(26,107,58,0.3)", transition: "transform 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                <Plus size={16} /> Add Dish
+              </button>
+            </div>
           </div>
 
+          {/* Add Category Input */}
+          {showCatInput && (
+            <div style={{ background: "white", borderRadius: 18, padding: "18px 22px", border: "1.5px solid #dceee3", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+              <FolderPlus size={18} color="#1a6b3a" />
+              <input
+                value={newCatName} onChange={e => setNewCatName(e.target.value)}
+                placeholder="Category name (e.g. Starters, Mains...)"
+                style={{ flex: 1, padding: "9px 14px", fontSize: 14, background: "#f8fdfb", border: "1.5px solid #dceee3", borderRadius: 10, outline: "none", fontFamily: "'Inter', sans-serif" }}
+                onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+              />
+              <button onClick={handleAddCategory} disabled={addingCat} style={{ padding: "9px 18px", borderRadius: 10, background: "#1a6b3a", color: "white", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}>
+                {addingCat ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : "Create"}
+              </button>
+              <button onClick={() => setShowCatInput(false)} style={{ padding: "9px 14px", borderRadius: 10, background: "#f2f9f4", color: "#4a7a58", fontWeight: 600, fontSize: 13, border: "1.5px solid #dceee3", cursor: "pointer" }}>Cancel</button>
+            </div>
+          )}
+
+          {/* AI Scanner */}
           <MenuScanner restaurantId={restaurantId} onScanComplete={() => fetchData(restaurantId)} />
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-300 outline-none" value={search} onChange={e => setSearch(e.target.value)} placeholder="Find a dish..." />
+          {/* Search & Filter */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+              <Search size={15} color="#9dbeaa" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
+              <input
+                value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Find a dish..."
+                style={{ width: "100%", paddingLeft: 40, paddingRight: 16, paddingTop: 11, paddingBottom: 11, fontSize: 14, background: "white", border: "1.5px solid #dceee3", borderRadius: 14, outline: "none", fontFamily: "'Inter', sans-serif", color: "#111827" }}
+              />
             </div>
-            <select className="px-4 py-3 text-sm bg-white border border-gray-100 rounded-2xl text-gray-600 font-medium cursor-pointer" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+
+  <button onClick={() => setFilterTag("all")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "all" ? "#1a6b3a" : "white",
+      color: filterTag === "all" ? "white" : "black"
+    }}>
+    All
+  </button>
+
+  <button onClick={() => setFilterTag("veg")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "veg" ? "#16a34a" : "white",
+      color: filterTag === "veg" ? "white" : "black"
+    }}>
+    Veg
+  </button>
+
+  <button onClick={() => setFilterTag("non-veg")}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid #ccc",
+      background: filterTag === "non-veg" ? "#dc2626" : "white",
+      color: filterTag === "non-veg" ? "white" : "black"
+    }}>
+    Non-Veg
+  </button>
+
+</div>
+            <select
+              value={filterCat} onChange={e => setFilterCat(e.target.value)}
+              style={{ padding: "11px 16px", fontSize: 13, fontWeight: 600, background: "white", border: "1.5px solid #dceee3", borderRadius: 14, color: "#4a7a58", cursor: "pointer", outline: "none", fontFamily: "'Inter', sans-serif" }}
+            >
               <option value="all">All Categories</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
 
+          {/* Category Pills */}
+          {categories.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={() => setFilterCat("all")}
+                style={{ padding: "6px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: "1.5px solid", borderColor: filterCat === "all" ? "#1a6b3a" : "#dceee3", background: filterCat === "all" ? "#e6f4ec" : "white", color: filterCat === "all" ? "#1a6b3a" : "#4a7a58", cursor: "pointer", transition: "all 0.15s" }}
+              >All</button>
+              {categories.map(c => (
+                <button key={c.id}
+                  onClick={() => setFilterCat(c.id)}
+                  style={{ padding: "6px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: "1.5px solid", borderColor: filterCat === c.id ? "#1a6b3a" : "#dceee3", background: filterCat === c.id ? "#e6f4ec" : "white", color: filterCat === c.id ? "#1a6b3a" : "#4a7a58", cursor: "pointer", transition: "all 0.15s" }}
+                >{c.name}</button>
+              ))}
+            </div>
+          )}
+
+          {/* Items Grid */}
           {filtered.length === 0 ? (
-            <div className="bg-white border border-dashed border-gray-200 rounded-3xl p-16 text-center">
-              <ChefHat size={40} className="text-orange-400 mx-auto mb-4" />
-              <h3 className="font-bold text-gray-800 text-xl">No dishes found</h3>
+            <div style={{ background: "white", borderRadius: 24, padding: "64px 32px", textAlign: "center", border: "1.5px dashed #dceee3" }}>
+              <div style={{ width: 60, height: 60, borderRadius: 18, background: "#f2f9f4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <ChefHat size={28} color="#9dbeaa" />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#1a2e1f", marginBottom: 8 }}>No dishes found</h3>
+              <p style={{ fontSize: 13, color: "#9dbeaa" }}>Add your first dish or try a different filter</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div style={{
+  display: "flex",
+  flexDirection: "column",  gap: 16 }}>
               {filtered.map(item => (
                 <MenuItemCard key={item.id} item={item} categories={categories}
                   onEdit={setModal} onToggle={handleToggle} onDelete={handleDeleteItem} />
@@ -309,8 +506,11 @@ export default function EditMenuPage() {
             </div>
           )}
         </main>
-        {modal !== null && <ItemModal item={modal.id ? modal : null} categories={categories} onClose={() => setModal(null)} onSave={handleSaveItem} />}
-      </RestaurantLayout>
+      </div>
+
+      {modal !== null && (
+        <ItemModal item={modal.id ? modal : null} categories={categories} onClose={() => setModal(null)} onSave={handleSaveItem} />
+      )}
     </>
   );
 }

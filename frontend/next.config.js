@@ -5,8 +5,6 @@ module.exports = {
     ignoreDuringBuilds: true,
   },
 
-  basePath: "/restaurant",
-
   webpack: (config) => {
     config.experiments = {
       ...config.experiments,
