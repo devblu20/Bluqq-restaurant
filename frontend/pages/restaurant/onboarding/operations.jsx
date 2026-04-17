@@ -153,11 +153,11 @@ export default function OperationsStep() {
                   Business Address
                 </p>
                 <textarea
-                  className="ops-textarea"
-                  rows={2}
-                  placeholder="123 MG Road, Bandra West, Mumbai 400050"
-                  {...register("address")}
-                />
+  className="ops-textarea"
+  rows={2}
+  placeholder="123 MG Road, Bandra West, Mumbai 400050"
+  {...register("address", { required: "Address is required" })}
+/>
               </div>
 
               {/* ── Opening Hours ── */}
@@ -235,25 +235,29 @@ export default function OperationsStep() {
                       Avg. Prep Time (min)
                     </p>
                     <input
-                      type="number"
-                      className="ops-input"
-                      min={1}
-                      placeholder="30"
-                      {...register("avg_prep_time_minutes")}
-                    />
+  type="number"
+  className="ops-input"
+  min={1}
+  placeholder="30"
+  {...register("avg_prep_time_minutes", {
+    required: "Prep time is required",
+  })}
+/>
                   </div>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: "#6aad7a", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                       Delivery Radius (km)
                     </p>
                     <input
-                      type="number"
-                      className="ops-input"
-                      min={1}
-                      step="0.5"
-                      placeholder="10"
-                      {...register("delivery_radius_km")}
-                    />
+  type="number"
+  className="ops-input"
+  min={1}
+  step="0.5"
+  placeholder="10"
+  {...register("delivery_radius_km", {
+    required: "Delivery radius is required",
+  })}
+/>
                   </div>
                 </div>
               </div>
@@ -270,10 +274,16 @@ export default function OperationsStep() {
                   Support WhatsApp Number
                 </p>
                 <input
-                  className="ops-input"
-                  placeholder="+91 98765 43210"
-                  {...register("whatsapp_number")}
-                />
+  className="ops-input"
+  placeholder="+91 98765 43210"
+  {...register("whatsapp_number", {
+    required: "WhatsApp number is required",
+    pattern: {
+      value: /^[0-9]{10}$/,
+      message: "Enter valid 10-digit number",
+    },
+  })}
+/>
               </div>
 
             </div>

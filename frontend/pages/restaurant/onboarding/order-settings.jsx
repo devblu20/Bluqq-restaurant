@@ -187,24 +187,28 @@ export default function OrderSettingsStep() {
                   <div>
                     <p className="sub-label">Minimum Order Amount (₹)</p>
                     <input
-                      type="number"
-                      className="ops-input"
-                      min={0}
-                      placeholder="0"
-                      {...register("minimum_order_amount")}
-                    />
+  type="number"
+  className="ops-input"
+  min={0}
+  placeholder="0"
+  {...register("minimum_order_amount", {
+    required: "Minimum order amount is required",
+  })}
+/>
                     <p className="hint-text">Set 0 for no minimum</p>
                   </div>
                   <div>
                     <p className="sub-label">Delivery Fee (₹)</p>
                     <input
-                      type="number"
-                      className="ops-input"
-                      min={0}
-                      step="0.50"
-                      placeholder="0"
-                      {...register("delivery_fee")}
-                    />
+  type="number"
+  className="ops-input"
+  min={0}
+  step="0.50"
+  placeholder="0"
+  {...register("delivery_fee", {
+    required: "Delivery fee is required",
+  })}
+/>
                     <p className="hint-text">Set 0 for free delivery</p>
                   </div>
                 </div>
@@ -221,7 +225,12 @@ export default function OrderSettingsStep() {
                   </span>
                   Currency
                 </p>
-                <select className="ops-input" {...register("currency")}>
+                <select
+  className="ops-input"
+  {...register("currency", {
+    required: "Currency is required",
+  })}
+>
                   <option value="INR">INR — Indian Rupee (₹)</option>
                   <option value="USD">USD — US Dollar ($)</option>
                   <option value="AED">AED — UAE Dirham</option>

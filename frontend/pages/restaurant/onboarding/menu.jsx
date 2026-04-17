@@ -335,6 +335,7 @@ export default function MenuPage() {
                     <input
                       className="input-field"
                       placeholder="Dish Name *"
+                      required
                       value={itemForm.name}
                       onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
                       style={{ padding: "12px 14px", background: "#f8fbf9", border: "1.5px solid #dceee3", borderRadius: 12, color: "#111827" }}
@@ -343,6 +344,8 @@ export default function MenuPage() {
                       className="input-field"
                       type="number"
                       placeholder="Price (₹) *"
+                      required
+  min="1"
                       value={itemForm.price}
                       onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
                       style={{ padding: "12px 14px", background: "#f8fbf9", border: "1.5px solid #dceee3", borderRadius: 12, color: "#111827" }}
@@ -352,6 +355,7 @@ export default function MenuPage() {
                   <select
                     className="input-field"
                     value={itemForm.category_id}
+                    required
                     onChange={(e) => setItemForm({ ...itemForm, category_id: e.target.value })}
                     style={{
                       width: "100%", padding: "12px 14px", marginBottom: 18,
