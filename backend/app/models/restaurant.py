@@ -32,10 +32,16 @@ class Restaurant(Base):
     city = Column(String, nullable=False)
     # String for multi-select support (e.g., "dine_in,delivery")
     business_type = Column(String, nullable=False)
-    
+
     status = Column(Enum(RestaurantStatus), default=RestaurantStatus.inactive)
     onboarding_status = Column(Enum(OnboardingStatus), default=OnboardingStatus.started)
     password_hash = Column(String, nullable=False)
+
+    # ✅ Email verification fields
+    email_verified = Column(Boolean, default=False, nullable=False)
+    verification_code = Column(String, nullable=True)
+    verification_code_expires = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
