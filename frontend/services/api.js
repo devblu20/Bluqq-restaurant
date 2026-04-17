@@ -45,10 +45,6 @@ export const updateRestaurant = (id, data) => api.patch(`/restaurants/${id}`, da
 
 export const createProfile = (id, data) => api.post(`/restaurants/${id}/profile`, data);
 export const updateProfile = (id, data) => api.patch(`/restaurants/${id}/profile`, data);
-export const getRestaurantProfile = (id) => api.get(`/restaurants/${id}`);
-export const updateRestaurantProfile = (id, data) => api.post(`/restaurants/${id}/profile`, data);
-
-// Aliases for operations.jsx compatibility
 export const getRestaurantProfile = (id) => api.get(`/restaurants/${id}/profile`);
 export const updateRestaurantProfile = (id, data) => api.patch(`/restaurants/${id}/profile`, data);
 
@@ -84,7 +80,7 @@ export const uploadMenu = uploadMenuImage;
 export const scanMenuImages = uploadMenuImage;
 
 /**
- * NEW: Import scanned menu data after manual review (if needed)
+ * Import scanned menu data after manual review (if needed)
  */
 export const importScan = (id, scanData) =>
   api.post(`/restaurants/${id}/menu/import-scan`, scanData);
