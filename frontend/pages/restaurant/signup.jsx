@@ -14,11 +14,11 @@ export default function SignupPage() {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await signup(data);
-      localStorage.setItem("token", res.data.access_token);
-      localStorage.setItem("restaurant_id", res.data.restaurant_id);
-      toast.success("Account created! Let's set up your restaurant.");
-      router.push("/restaurant/onboarding/basic-info");
+      await signup(data);
+      // Save email so verify page can pre-fill it
+      localStorage.setItem("pending_email", data.email);
+      toast.success("Account created! Check your email for the code.");
+      router.push("/restaurant/verify-email");
     } catch (err) {
       const errorDetail = err.response?.data?.detail;
       if (Array.isArray(errorDetail)) {
@@ -85,7 +85,6 @@ export default function SignupPage() {
           z-index: 1;
         }
 
-        /* Hero banner */
         .signup-hero {
           background: linear-gradient(135deg, #0f3d20 0%, #1a6b3a 55%, #22a855 100%);
           border-radius: 24px 24px 0 0;
@@ -136,7 +135,6 @@ export default function SignupPage() {
           font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 500;
         }
 
-        /* Stat pills inside hero */
         .hero-pills {
           display: flex; gap: 8px; flex-wrap: wrap;
           margin-top: 18px;
@@ -150,7 +148,6 @@ export default function SignupPage() {
           padding: 5px 12px; border-radius: 999px;
         }
 
-        /* Form body */
         .signup-body {
           background: white;
           border-radius: 0 0 24px 24px;
@@ -246,7 +243,6 @@ export default function SignupPage() {
       <div className="signup-wrap">
         <div className="signup-card">
 
-          {/* Hero Banner */}
           <div className="signup-hero">
             <div className="hero-badge">
               <Flame size={10} color="#fde047" />
@@ -264,7 +260,6 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* Form Body */}
           <div className="signup-body">
             <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 

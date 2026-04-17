@@ -27,7 +27,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     phone: str
     city: str
-    business_type: Optional[str] = "dine_in" 
+    business_type: Optional[str] = "dine_in"
     password: str
 
 
@@ -40,6 +40,17 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     restaurant_id: str
+
+
+# ✅ NEW — Verify email with OTP code
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+# ✅ NEW — Resend verification code
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 
 # --- Restaurant ---
@@ -74,6 +85,7 @@ class RestaurantResponse(BaseModel):
     description: Optional[str] = None
     status: str
     onboarding_status: str
+    email_verified: bool = False        # ✅ NEW — expose verification status
     created_at: Optional[datetime] = None
 
     class Config:
