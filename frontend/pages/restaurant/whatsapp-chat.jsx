@@ -30,9 +30,6 @@ export default function WhatsAppChatPage() {
     verify_token: "",
     business_phone: "",
     is_active: false,
-    tone: "friendly",
-    language: "english",
-    custom_prompt: "",
   });
 
   const [customerPhone, setCustomerPhone] = useState("+919999999999");
@@ -179,36 +176,6 @@ export default function WhatsAppChatPage() {
               />
             </div>
 
-            <div style={styles.row}>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Tone</label>
-                <select
-                  style={styles.input}
-                  value={config.tone || "friendly"}
-                  onChange={(e) => setConfig({ ...config, tone: e.target.value })}
-                >
-                  <option value="friendly">Friendly</option>
-                  <option value="premium">Premium</option>
-                  <option value="casual">Casual</option>
-                </select>
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Language</label>
-                <input style={{ ...styles.input, opacity: 0.6, cursor: "not-allowed" }} value="English" disabled readOnly />
-              </div>
-            </div>
-
-            <div style={styles.fieldGroup}>
-              <label style={styles.label}>Custom Prompt</label>
-              <textarea
-                style={{ ...styles.input, resize: "none", height: 96 }}
-                rows={4}
-                value={config.custom_prompt || ""}
-                onChange={(e) => setConfig({ ...config, custom_prompt: e.target.value })}
-                placeholder="Extra waiter personality rules..."
-              />
-            </div>
-
             <label style={styles.checkboxRow}>
               <div style={{ ...styles.toggle, background: config.is_active ? "#2d6a4f" : "#d1d5db" }}>
                 <input
@@ -321,19 +288,6 @@ export default function WhatsAppChatPage() {
           </div>
         </div>
 
-        {/* Webhook info */}
-        <div style={styles.infoCard}>
-          <p style={styles.infoTitle}>Webhook URL (Meta Setup)</p>
-          <p style={styles.infoText}>
-            Set callback URL to{" "}
-            <code style={styles.code}>https://your-api-domain/whatsapp/webhook</code>
-          </p>
-          <p style={{ ...styles.infoText, marginTop: 4 }}>
-            Verification token uses env{" "}
-            <code style={styles.code}>WHATSAPP_WEBHOOK_VERIFY_TOKEN</code> or default{" "}
-            <code style={styles.code}>restaurant_webhook_verify</code>.
-          </p>
-        </div>
       </div>
 
       <style>{`
@@ -491,11 +445,6 @@ const styles = {
     transition: "outline 0.15s",
     fontFamily: "inherit",
   },
-  row: {
-    display: "flex",
-    gap: 12,
-    marginBottom: 14,
-  },
   checkboxRow: {
     display: "flex",
     alignItems: "center",
@@ -553,32 +502,5 @@ const styles = {
     display: "flex",
     gap: 8,
     alignItems: "center",
-  },
-  infoCard: {
-    background: "#ffffff",
-    borderRadius: 14,
-    padding: "16px 20px",
-    border: "1px solid #d8f3dc",
-    boxShadow: "0 1px 4px rgba(45,106,79,0.05)",
-  },
-  infoTitle: {
-    margin: "0 0 6px",
-    fontWeight: 700,
-    fontSize: 13,
-    color: "#1b4332",
-  },
-  infoText: {
-    margin: 0,
-    fontSize: 12,
-    color: "#52796f",
-    lineHeight: 1.6,
-  },
-  code: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    background: "#d8f3dc",
-    padding: "1px 5px",
-    borderRadius: 4,
-    color: "#1b4332",
   },
 };
