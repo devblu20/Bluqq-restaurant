@@ -17,7 +17,7 @@ def get_code_expiry() -> datetime:
 def send_verification_email(to_email: str, restaurant_name: str, code: str) -> bool:
     try:
         resend.Emails.send({
-            "from": "Bluqq <noreply@yourdomain.com>",  # ← your verified domain
+            "from": "BluQQ <noreply@bluqq.com>",  # ← your verified domain
             "to": [to_email],
             "subject": "Verify your Bluqq account",
             "html": f"""
