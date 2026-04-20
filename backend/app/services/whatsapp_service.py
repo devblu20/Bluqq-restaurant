@@ -287,10 +287,25 @@ def _is_ingredient_query(text: str) -> bool:
     ])
 
 
+def _is_nonveg_msg(msg: str) -> bool:
+    """True if message is clearly about NON-VEG. Must be checked BEFORE any veg check."""
+    return bool(re.search(r"\bnon[\s\-]?veg\b", msg)) or "nonveg" in msg
+
+
+def _is_veg_only_msg(msg: str) -> bool:
+    """True if message is about VEG — only when it is NOT about non-veg."""
+    if _is_nonveg_msg(msg):
+        return False
+    return bool(re.search(r"\bveg\b|\bvegetarian\b", msg))
+
+
 def _is_veg_query(text: str) -> bool:
+    """True when customer is asking about veg status of a specific item."""
     msg = _normalize_text(text)
+    if _is_nonveg_msg(msg):
+        return False
     return any(re.search(p, msg) for p in [
-        r"\bveg\b", r"\bvegetarian\b", r"\bnon.?veg\b",
+        r"\bveg\b", r"\bvegetarian\b",
         r"\bmeat\b", r"\bcontain meat\b", r"\bis it veg\b",
         r"\bis .* veg", r"\bveg or not\b", r"\bpaneer\b.*\bveg\b",
     ])
@@ -476,18 +491,24 @@ def _is_best_dish_intent(msg: str) -> bool:
 
 
 def _is_veg_menu_intent(msg: str) -> bool:
-    return any(k in msg for k in [
+    """Matches veg menu requests — ONLY when non-veg is NOT in the message."""
+    if _is_nonveg_msg(msg):
+        return False
+    return bool(re.search(r"\bveg\b|\bvegetarian\b", msg)) and any(k in msg for k in [
+        "option", "menu", "item", "show", "list", "all", "what", "only", "have",
+    ]) or any(k in msg for k in [
         "veg options", "vegetarian options", "veg menu", "vegetarian menu",
         "show veg", "show vegetarian", "veg items", "vegetarian items",
         "only veg", "all veg",
-    ])
+    ]) and not _is_nonveg_msg(msg)
 
 
 def _is_nonveg_menu_intent(msg: str) -> bool:
-    return any(k in msg for k in [
+    """Matches non-veg menu requests — checked BEFORE veg so 'non veg' isn't swallowed."""
+    return _is_nonveg_msg(msg) and any(k in msg for k in [
+        "option", "menu", "item", "show", "list", "all", "what", "only", "have",
         "non veg options", "nonveg options", "non-veg options",
         "non veg menu", "nonveg menu", "non-veg menu",
-        "show non veg", "non veg items", "nonveg items",
     ])
 
 
@@ -587,7 +608,8 @@ def _has_strong_intent(msg: str, stage: str) -> bool:
         or _is_veg_menu_intent(m)
         or _is_nonveg_menu_intent(m)
         or _extract_item_keyword_from_options_query(m) is not None
-        or any(k in m for k in ["veg", "vegetarian", "non veg", "nonveg"])
+        or _is_nonveg_msg(m)
+        or _is_veg_only_msg(m)
     )
 
 
@@ -891,25 +913,19 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
     if _is_party_catering_intent(msg):
         return _handle_party_intent(db, restaurant_id, message, items)
 
-    # ── VEG MENU INTENT (FULL VEG LIST) ──────────────────────────────────────
-    if _is_veg_menu_intent(msg) or (
-        any(k in msg for k in ["veg", "vegetarian"]) and
-        any(k in msg for k in ["option", "menu", "item", "show", "list", "all", "what"])
-    ):
-        ctx["dietary_pref"] = "veg"
-        conv.context_json = ctx
-        db.commit()
-        return _format_menu(items, dietary_pref="veg")
-
-    # ── NON-VEG MENU INTENT ───────────────────────────────────────────────────
-    if _is_nonveg_menu_intent(msg) or (
-        any(k in msg for k in ["non veg", "nonveg", "non-veg"]) and
-        any(k in msg for k in ["option", "menu", "item", "show", "list", "all", "what"])
-    ):
+    # ── NON-VEG MENU INTENT — checked FIRST so "non veg" isn't swallowed by veg ──
+    if _is_nonveg_menu_intent(msg) or _is_nonveg_msg(msg):
         ctx["dietary_pref"] = "nonveg"
         conv.context_json = ctx
         db.commit()
         return _format_menu(items, dietary_pref="nonveg")
+
+    # ── VEG MENU INTENT — only after confirming it's not non-veg ─────────────
+    if _is_veg_menu_intent(msg) or _is_veg_only_msg(msg):
+        ctx["dietary_pref"] = "veg"
+        conv.context_json = ctx
+        db.commit()
+        return _format_menu(items, dietary_pref="veg")
 
     # ── MENU INTENTS ──────────────────────────────────────────────────────────
     if _is_show_full_menu_intent(msg):
@@ -918,14 +934,14 @@ def _fallback_reply(db: Session, restaurant_id: str, customer_phone: str, messag
         return _format_menu(items, dietary_pref=pref)
 
     if _is_starter_intent(msg):
-        pref = "veg" if ("veg" in msg and "non" not in msg) else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        pref = "nonveg" if _is_nonveg_msg(msg) else ("veg" if _is_veg_only_msg(msg) else dietary_pref)
         ctx["dietary_pref"] = pref
         conv.context_json = ctx
         db.commit()
         return _format_menu(items, dietary_pref=pref, starters_only=True)
 
     if _is_best_dish_intent(msg) or any(k in msg for k in ["recommend", "suggest"]):
-        pref = "veg" if ("veg" in msg and "non" not in msg) else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        pref = "nonveg" if _is_nonveg_msg(msg) else ("veg" if _is_veg_only_msg(msg) else dietary_pref)
         ctx["dietary_pref"] = pref
         conv.context_json = ctx
         db.commit()
