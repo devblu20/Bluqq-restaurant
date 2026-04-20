@@ -359,14 +359,10 @@ def _format_cart(order_lines: list) -> str:
     """Render the current cart as a WhatsApp-friendly string."""
     if not order_lines:
         return "🛒 Your cart is empty."
-    subtotal = sum(int(l.get("line_total", 0)) for l in order_lines)
     lines    = ["🛒 *Your Cart:*"]
     for l in order_lines:
         qty        = int(l.get("qty", 1))
-        unit_price = int(l.get("unit_price", 0))
-        line_total = int(l.get("line_total", 0))
-        lines.append(f"• {l.get('name','Item')} x {qty} — {_format_price(unit_price)} = {_format_price(line_total)}")
-    lines.append(f"💵 *Subtotal: {_format_price(subtotal)}*")
+        lines.append(f"• {l.get('name','Item')} x {qty}")
     return "\n".join(lines)
 
 
@@ -557,6 +553,10 @@ def _is_ingredient_query(msg: str) -> bool:
 
 def _is_veg_query(msg: str) -> bool:
     msg = _normalize_text(msg)
+    if _is_veg_menu_intent(msg) or _is_nonveg_menu_intent(msg):
+        return False
+    if any(k in msg for k in ["menu", "options", "items", "list", "show"]):
+        return False
     return any(re.search(p, msg) for p in [
         r"\bveg\b", r"\bvegetarian\b", r"\bnon.?veg\b",
         r"\bmeat\b", r"\bcontain meat\b", r"\bis it veg\b",
@@ -837,18 +837,33 @@ def _ingredient_reply_for_item(item: MenuItem) -> str:
 def _build_add_reply(ctx: dict, item: MenuItem, qty: int) -> str:
     price      = int(item.price or 0)
     order_lines = _append_order_line(ctx, item.name, qty, price)
+    ctx["last_added_item"] = item.name
     cart_text  = _format_cart(order_lines)
     suggestions = [
-        "Want to add drinks or a dessert to go with that?",
-        "Would you like any sides or beverages?",
-        "Anything else to add, or shall I confirm your order?",
-        "Want to add more items, or ready to confirm?",
+        "Anything else you'd like?",
+        "Would you like me to add anything more?",
+        "Want to add another item?",
+        "Shall I add anything else for you?",
     ]
     return (
-        f"✅ Added *{qty} × {item.name}* ({_format_price(price)} each)\n\n"
+        f"Added *{qty} {item.name}* 👍\n\n"
         f"{cart_text}\n\n"
         f"{random.choice(suggestions)}"
     )
+
+
+def _is_start_over_intent(msg: str) -> bool:
+    m = _normalize_text(msg)
+    return m in {
+        "start over", "restart", "reset", "clear cart", "new order", "start again"
+    }
+
+
+def _closest_item_hint(message: str, items) -> str:
+    best = _find_best_item_match(message, items)
+    if best:
+        return f"Did you mean *{best.name}*?"
+    return "Could you tell me the dish name once more?"
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -858,6 +873,8 @@ def _build_add_reply(ctx: dict, item: MenuItem, qty: int) -> str:
 def _has_strong_intent(msg: str, stage: str) -> bool:
     m = _normalize_text(msg)
     return (
+        _is_start_over_intent(m)
+        or
         stage in {
             "awaiting_confirmation", "awaiting_name",
             "awaiting_contact", "awaiting_address", "confirmed",
@@ -965,89 +982,29 @@ def _fallback_reply(
             "Hello! What would you like today? 🙂",
         ])
 
+    # ── START OVER / RESET FLOW ───────────────────────────────────────────────
+    if _is_start_over_intent(message):
+        ctx.update({
+            "order_lines": [],
+            "pending_item": None,
+            "pending_price": None,
+            "pending_qty": None,
+            "stage": None,
+            "customer_name": None,
+            "customer_contact": None,
+            "customer_address": None,
+            "last_confirmation_prompt_at": None,
+            "last_quantity_range": None,
+            "last_added_item": None,
+            "dietary_pref": "all",
+            "welcomed": True,
+        })
+        _save_ctx()
+        return "Done, I have cleared the current order. What would you like to order now?"
+
     # ── PARTY INTENT ──────────────────────────────────────────────────────────
     if _is_party_catering_intent(msg):
         return _handle_party_intent(db, restaurant_id, message, items)
-
-    # ── VEG MENU ──────────────────────────────────────────────────────────────
-    if _is_veg_menu_intent(msg):
-        ctx["dietary_pref"] = "veg"
-        _save_ctx()
-        return _format_menu(items, dietary_pref="veg")
-
-    # ── NON-VEG MENU ──────────────────────────────────────────────────────────
-    if _is_nonveg_menu_intent(msg):
-        ctx["dietary_pref"] = "nonveg"
-        _save_ctx()
-        return _format_menu(items, dietary_pref="nonveg")
-
-    # ── FULL MENU ─────────────────────────────────────────────────────────────
-    if _is_show_full_menu_intent(msg):
-        return _format_menu(items, dietary_pref=dietary_pref)
-
-    # ── STARTERS ──────────────────────────────────────────────────────────────
-    if _is_starter_intent(msg):
-        pref = (
-            "veg" if ("veg" in msg and "non" not in msg)
-            else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
-        )
-        ctx["dietary_pref"] = pref
-        _save_ctx()
-        return _format_menu(items, dietary_pref=pref, starters_only=True)
-
-    # ── RECOMMENDATIONS ───────────────────────────────────────────────────────
-    if _is_best_dish_intent(msg) or any(k in msg for k in ["recommend", "suggest"]):
-        pref = (
-            "veg" if ("veg" in msg and "non" not in msg)
-            else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
-        )
-        ctx["dietary_pref"] = pref
-        _save_ctx()
-        return _format_top_picks(items, dietary_pref=pref)
-
-    # ── KEYWORD OPTIONS (e.g. "fries options", "options in burger") ───────────
-    kw = _extract_item_keyword_from_options_query(msg)
-    if kw:
-        result = _format_item_options(items, kw)
-        if result:
-            return result
-        best = _find_best_item_match(kw, items)
-        if best:
-            tag_label = "🌿 Veg" if _item_is_veg(best) else "🍖 Non-Veg"
-            return (
-                f"We have *{best.name}* — {_format_price(best.price)} ({tag_label}) 😊\n"
-                "Would you like to order it, or see the full menu?"
-            )
-        return (
-            f"I couldn't find any '{kw}' options on our menu right now 🙁\n"
-            "Would you like to see the full menu instead?"
-        )
-
-    # ── REMOVE ITEM ───────────────────────────────────────────────────────────
-    if _is_remove_intent(msg):
-        best = _find_best_item_match(message, items)
-        if best:
-            order_lines, found = _remove_order_line(ctx, best.name)
-            _save_ctx()
-            if found:
-                cart_text = _format_cart(order_lines)
-                return f"Removed *{best.name}* from your cart ✅\n\n{cart_text}"
-            return f"*{best.name}* wasn't in your cart 🙂 Anything else?"
-        # Try matching against cart directly
-        cart_lines = ctx.get("order_lines") or []
-        if cart_lines:
-            for line in cart_lines:
-                if _normalize_text(line.get("name", "")) in msg:
-                    order_lines, _ = _remove_order_line(ctx, line["name"])
-                    _save_ctx()
-                    return f"Removed *{line['name']}* ✅\n\n{_format_cart(order_lines)}"
-        return "Which item would you like to remove? 😊"
-
-    # ── MODIFY ORDER ──────────────────────────────────────────────────────────
-    if _is_modify_order_intent(msg) and pending_item:
-        ctx.update({"pending_item": None, "pending_price": None, "stage": None})
-        _save_ctx()
-        return "Sure, let's fix that 👍 Which item would you like instead?"
 
     # ── CHECKOUT FLOW STAGES ──────────────────────────────────────────────────
     if stage == "awaiting_name":
@@ -1114,34 +1071,7 @@ def _fallback_reply(
         _save_ctx()
         return "No worries 🙂 Want to see more options or pick a different dish?"
 
-    # ── INGREDIENT QUERY ──────────────────────────────────────────────────────
-    if _is_ingredient_query(message):
-        best = _find_best_item_match(message, items) or (
-            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
-            if pending_item else None
-        )
-        if best:
-            return _ingredient_reply_for_item(best)
-
-    # ── VEG QUERY FOR SPECIFIC ITEM ───────────────────────────────────────────
-    if _is_veg_query(message):
-        best = _find_best_item_match(message, items) or (
-            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
-            if pending_item else None
-        )
-        if best:
-            ctx.update({
-                "pending_item": best.name,
-                "pending_price": int(best.price or 0),
-                "stage": "awaiting_confirmation",
-            })
-            _save_ctx()
-            return _veg_status_reply(best)
-        ctx["dietary_pref"] = "veg"
-        _save_ctx()
-        return _format_menu(items, dietary_pref="veg")
-
-    # ── QUANTITY SUGGESTION ────────────────────────────────────────────────────
+    # ── INTENT PRIORITY 1: QUANTITY ESTIMATION ───────────────────────────────
     if _is_quantity_suggestion_intent(message):
         people_count = _extract_people_count(message)
         selected     = _find_best_item_match(message, items) or (
@@ -1160,13 +1090,16 @@ def _fallback_reply(
             _save_ctx()
             return _build_quantity_suggestion_reply(selected, people_count)
         if people_count and not selected:
-            return f"For {people_count} people, I can suggest quantities once you pick the dish 😊 What would you like?"
+            return (
+                f"For *{people_count} people*, I can suggest exact quantity once you tell me the dish 👍\n"
+                "Which item should I estimate for?"
+            )
         if selected and not people_count:
             ctx.update({"pending_item": selected.name, "pending_price": int(selected.price or 0)})
             _save_ctx()
-            return f"How many people are you ordering *{selected.name}* for? I'll suggest the right quantity 🍽️"
+            return f"How many people are you ordering *{selected.name}* for? I'll estimate the right quantity."
 
-    # ── ADD INTENT — the main ordering path ───────────────────────────────────
+    # ── INTENT PRIORITY 2: ADD TO CART ───────────────────────────────────────
     if _is_add_intent(msg):
         selected = _find_best_item_match(message, items)
         if not selected and pending_item:
@@ -1174,9 +1107,14 @@ def _fallback_reply(
                 (i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)),
                 None,
             )
+        if not selected and (ctx.get("last_added_item") or ""):
+            selected = next(
+                (i for i in items if _normalize_text(i.name or "") == _normalize_text(ctx.get("last_added_item", ""))),
+                None,
+            )
         if not selected:
             _save_ctx()
-            return "Of course! 😊 Which dish would you like to add?"
+            return f"Sure 👍 {_closest_item_hint(message, items)}"
 
         qty = _extract_qty(message) or 1
         # If qty equals a detected people count it's likely party size mention, not item qty.
@@ -1192,7 +1130,7 @@ def _fallback_reply(
         _save_ctx()
         return reply
 
-    # ── EXPLICIT ORDER INTENT ─────────────────────────────────────────────────
+    # ── INTENT PRIORITY 2 (continued): EXPLICIT ORDER ────────────────────────
     if _is_order_intent(msg):
         people_count = _extract_people_count(message)
         selected     = _find_best_item_match(message, items) or (
@@ -1200,7 +1138,7 @@ def _fallback_reply(
             if pending_item else None
         )
         if not selected:
-            return "Sure! Which dish would you like to order? 😊"
+            return f"Sure 👍 {_closest_item_hint(message, items)}"
         if people_count:
             low, high, suggested, _ = _estimate_qty_for_people(selected, people_count)
             ctx.update({
@@ -1218,6 +1156,103 @@ def _fallback_reply(
         })
         _save_ctx()
         return reply
+
+    # ── INTENT PRIORITY 3: REMOVE / UPDATE ───────────────────────────────────
+    if _is_remove_intent(msg):
+        best = _find_best_item_match(message, items)
+        if best:
+            order_lines, found = _remove_order_line(ctx, best.name)
+            _save_ctx()
+            if found:
+                cart_text = _format_cart(order_lines)
+                return f"Removed *{best.name}* from your cart 👍\n\n{cart_text}"
+            return f"I can remove it right away once it's in cart. {_closest_item_hint(message, items)}"
+        cart_lines = ctx.get("order_lines") or []
+        if cart_lines:
+            for line in cart_lines:
+                if _normalize_text(line.get("name", "")) in msg:
+                    order_lines, _ = _remove_order_line(ctx, line["name"])
+                    _save_ctx()
+                    return f"Removed *{line['name']}* 👍\n\n{_format_cart(order_lines)}"
+        return f"Sure 👍 {_closest_item_hint(message, items)}"
+
+    if _is_modify_order_intent(msg) and pending_item:
+        ctx.update({"pending_item": None, "pending_price": None, "stage": None})
+        _save_ctx()
+        return "Sure, let's update that. Tell me which item you want instead."
+
+    # ── INTENT PRIORITY 4: INGREDIENT QUERY ──────────────────────────────────
+    if _is_ingredient_query(message):
+        best = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
+        if best:
+            return _ingredient_reply_for_item(best)
+        return f"Sure, I can help with ingredients. {_closest_item_hint(message, items)}"
+
+    # ── INTENT PRIORITY 5: VEG / NON-VEG QUERY ───────────────────────────────
+    if _is_veg_query(message):
+        best = _find_best_item_match(message, items) or (
+            next((i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)), None)
+            if pending_item else None
+        )
+        if best:
+            ctx.update({
+                "pending_item": best.name,
+                "pending_price": int(best.price or 0),
+                "stage": "awaiting_confirmation",
+            })
+            _save_ctx()
+            return _veg_status_reply(best)
+        return f"Sure. {_closest_item_hint(message, items)}"
+
+    # ── INTENT PRIORITY 6: SUGGESTIONS ───────────────────────────────────────
+    if _is_starter_intent(msg):
+        pref = (
+            "veg" if ("veg" in msg and "non" not in msg)
+            else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        )
+        ctx["dietary_pref"] = pref
+        _save_ctx()
+        return _format_menu(items, dietary_pref=pref, starters_only=True)
+
+    if _is_best_dish_intent(msg) or any(k in msg for k in ["recommend", "suggest"]):
+        pref = (
+            "veg" if ("veg" in msg and "non" not in msg)
+            else ("nonveg" if ("nonveg" in msg or "non veg" in msg) else dietary_pref)
+        )
+        ctx["dietary_pref"] = pref
+        _save_ctx()
+        return _format_top_picks(items, dietary_pref=pref)
+
+    kw = _extract_item_keyword_from_options_query(msg)
+    if kw:
+        result = _format_item_options(items, kw)
+        if result:
+            return result
+        best = _find_best_item_match(kw, items)
+        if best:
+            tag_label = "🌿 Veg" if _item_is_veg(best) else "🍖 Non-Veg"
+            return (
+                f"We have *{best.name}* ({tag_label}) 😊\n"
+                "Would you like me to add it to your cart?"
+            )
+        return f"Sure 👍 {_closest_item_hint(kw, items)}"
+
+    # ── INTENT PRIORITY 7: MENU (ONLY WHEN EXPLICIT) ────────────────────────
+    if _is_veg_menu_intent(msg):
+        ctx["dietary_pref"] = "veg"
+        _save_ctx()
+        return _format_menu(items, dietary_pref="veg")
+
+    if _is_nonveg_menu_intent(msg):
+        ctx["dietary_pref"] = "nonveg"
+        _save_ctx()
+        return _format_menu(items, dietary_pref="nonveg")
+
+    if _is_show_full_menu_intent(msg):
+        return _format_menu(items, dietary_pref="all")
 
     # ── ITEM NAME MATCH ───────────────────────────────────────────────────────
     best_item = _find_best_item_match(message, items)
