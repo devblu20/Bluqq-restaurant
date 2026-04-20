@@ -9,13 +9,14 @@ import { UtensilsCrossed, Loader2, ArrowRight, Flame } from "lucide-react";
 export default function SignupPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, watch, formState: { errors } } = useForm();
+
+  const passwordValue = watch("password", "");
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
       await signup(data);
-      // Save email so verify page can pre-fill it
       localStorage.setItem("pending_email", data.email);
       toast.success("Account created! Check your email for the code.");
       router.push("/restaurant/verify-email");
@@ -202,10 +203,30 @@ export default function SignupPage() {
           border-color: #1a6b3a;
           box-shadow: 0 0 0 3px rgba(26,107,58,0.10);
         }
+        .field-input.error {
+          border-color: #e11d48;
+          background: #fff8f8;
+        }
+        .field-input.error:focus {
+          box-shadow: 0 0 0 3px rgba(225,29,72,0.10);
+        }
+        .field-input.success {
+          border-color: #1a6b3a;
+          background: #f4faf6;
+        }
 
         .field-error {
           font-size: 10px; font-weight: 700; color: #e11d48;
           margin-top: 5px; margin-left: 2px; font-style: italic;
+        }
+
+        .password-hint {
+          font-size: 10px; font-weight: 600; color: #9dbeaa;
+          margin-top: 5px; margin-left: 2px;
+          display: flex; align-items: center; gap: 4px;
+        }
+        .password-hint.match {
+          color: #1a6b3a;
         }
 
         .submit-btn {
@@ -269,7 +290,7 @@ export default function SignupPage() {
                 <div>
                   <label className="field-label">Restaurant Name</label>
                   <input
-                    className="field-input"
+                    className={`field-input${errors.name ? " error" : ""}`}
                     placeholder="e.g. Spice Garden"
                     {...register("name", { required: "Restaurant name is required" })}
                   />
@@ -278,7 +299,7 @@ export default function SignupPage() {
                 <div>
                   <label className="field-label">Owner Name</label>
                   <input
-                    className="field-input"
+                    className={`field-input${errors.owner_name ? " error" : ""}`}
                     placeholder="Your Name"
                     {...register("owner_name", { required: "Owner name is required" })}
                   />
@@ -290,7 +311,7 @@ export default function SignupPage() {
                 <div>
                   <label className="field-label">Phone Number</label>
                   <input
-                    className="field-input"
+                    className={`field-input${errors.phone ? " error" : ""}`}
                     placeholder="+91 98765 43210"
                     {...register("phone", { required: "Phone number is required" })}
                   />
@@ -299,7 +320,7 @@ export default function SignupPage() {
                 <div>
                   <label className="field-label">City</label>
                   <input
-                    className="field-input"
+                    className={`field-input${errors.city ? " error" : ""}`}
                     placeholder="Mumbai"
                     {...register("city", { required: "City is required" })}
                   />
@@ -312,7 +333,7 @@ export default function SignupPage() {
               <div>
                 <label className="field-label">Email Address</label>
                 <input
-                  className="field-input"
+                  className={`field-input${errors.email ? " error" : ""}`}
                   type="email"
                   placeholder="owner@restaurant.com"
                   {...register("email", {
@@ -323,18 +344,49 @@ export default function SignupPage() {
                 {errors.email && <p className="field-error">{errors.email.message}</p>}
               </div>
 
-              <div>
-                <label className="field-label">Password</label>
-                <input
-                  className="field-input"
-                  type="password"
-                  placeholder="Min. 8 characters"
-                  {...register("password", {
-                    required: "Password is required",
-                    minLength: { value: 8, message: "At least 8 characters" }
-                  })}
-                />
-                {errors.password && <p className="field-error">{errors.password.message}</p>}
+              {/* Password + Confirm Password side by side */}
+              <div className="field-row">
+                <div>
+                  <label className="field-label">Password</label>
+                  <input
+                    className={`field-input${errors.password ? " error" : ""}`}
+                    type="password"
+                    placeholder="Min. 8 characters"
+                    {...register("password", {
+                      required: "Password is required",
+                      minLength: { value: 8, message: "At least 8 characters" }
+                    })}
+                  />
+                  {errors.password
+                    ? <p className="field-error">{errors.password.message}</p>
+                    : <p className="password-hint">🔒 Minimum 8 characters</p>
+                  }
+                </div>
+                <div>
+                  <label className="field-label">Confirm Password</label>
+                  <input
+                    className={`field-input${
+                      errors.confirm_password
+                        ? " error"
+                        : passwordValue && !errors.confirm_password
+                        ? " success"
+                        : ""
+                    }`}
+                    type="password"
+                    placeholder="Re-enter password"
+                    {...register("confirm_password", {
+                      required: "Please confirm your password",
+                      validate: (value) =>
+                        value === passwordValue || "Passwords do not match",
+                    })}
+                  />
+                  {errors.confirm_password
+                    ? <p className="field-error">{errors.confirm_password.message}</p>
+                    : passwordValue
+                    ? <p className="password-hint match">✓ Passwords match</p>
+                    : null
+                  }
+                </div>
               </div>
 
               <button type="submit" disabled={loading} className="submit-btn" style={{ marginTop: 8 }}>
