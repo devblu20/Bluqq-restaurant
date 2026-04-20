@@ -5,7 +5,7 @@ module.exports = {
     ignoreDuringBuilds: true,
   },
 
-  trailingSlash: true, // ← ADD THIS
+  trailingSlash: true,
 
   webpack: (config) => {
     config.experiments = {
