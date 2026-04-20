@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/((?!_next|favicon.ico).*)",
-      "destination": "/"
+      "source": "/((?!_next|favicon.ico|api).*)",
+      "destination": "/$1"
     }
   ]
 }
