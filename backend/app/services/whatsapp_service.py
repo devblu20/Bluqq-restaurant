@@ -468,6 +468,8 @@ def _is_best_dish_intent(msg: str) -> bool:
 
 
 def _is_veg_menu_intent(msg: str) -> bool:
+    if re.search(r"\bnon[-\s]?veg\b", msg):
+        return False
     return any(k in msg for k in [
         "veg options", "vegetarian options", "veg menu", "vegetarian menu",
         "show veg", "show vegetarian", "veg items", "vegetarian items",
@@ -480,7 +482,7 @@ def _is_veg_menu_intent(msg: str) -> bool:
 
 
 def _is_nonveg_menu_intent(msg: str) -> bool:
-    return any(k in msg for k in [
+    return bool(re.search(r"\bnon[-\s]?veg\b", msg)) or any(k in msg for k in [
         "non veg options", "nonveg options", "non-veg options",
         "non veg menu", "nonveg menu", "non-veg menu",
         "show non veg", "non veg items", "nonveg items",
@@ -503,6 +505,12 @@ def _is_order_intent(msg: str) -> bool:
 
 def _is_add_intent(msg: str) -> bool:
     """Detect ADD TO CART intent — the most common ordering action."""
+    # Estimation-style asks should not auto-add to cart.
+    if _is_quantity_suggestion_intent(msg) or any(
+        k in msg for k in ["estimate", "estimation", "quantity", "how many", "how much"]
+    ):
+        return False
+
     if any(k in msg for k in [
         "add ", "also add", "include", "increase",
         "i want ", "i'll take", "i will take",
@@ -527,6 +535,7 @@ def _is_remove_intent(msg: str) -> bool:
 
 
 def _is_quantity_suggestion_intent(msg: str) -> bool:
+    msg = _normalize_text(msg)
     keys = [
         "how much quantity", "what quantity", "how much should i order",
         "how many should i order", "quantity should i order",
@@ -539,6 +548,7 @@ def _is_quantity_suggestion_intent(msg: str) -> bool:
 
 
 def _is_ingredient_query(msg: str) -> bool:
+    msg = _normalize_text(msg)
     return any(k in msg for k in [
         "ingredient", "ingredients", "made of", "what is in",
         "contains", "allergen", "allergy",
@@ -546,6 +556,7 @@ def _is_ingredient_query(msg: str) -> bool:
 
 
 def _is_veg_query(msg: str) -> bool:
+    msg = _normalize_text(msg)
     return any(re.search(p, msg) for p in [
         r"\bveg\b", r"\bvegetarian\b", r"\bnon.?veg\b",
         r"\bmeat\b", r"\bcontain meat\b", r"\bis it veg\b",
@@ -765,7 +776,9 @@ def _estimate_qty_for_people(item: MenuItem, people_count: int):
     name   = _normalize_text(item.name or "")
     _, section = _section_for_item(item)
 
-    if any(k in name for k in ["fries", "salad", "snack", "starter", "tikka", "burger"]):
+    if any(k in name for k in ["shake", "juice", "lassi", "mocktail", "soda", "tea", "coffee"]):
+        low_f, high_f, note = 0.8, 1.1, "for beverage servings"
+    elif any(k in name for k in ["fries", "salad", "snack", "starter", "tikka", "burger"]):
         low_f, high_f, note = 0.45, 0.65, "as a snack/side"
     elif section == "Starters":
         low_f, high_f, note = 0.5, 0.75, "for starter portions"
@@ -1101,32 +1114,6 @@ def _fallback_reply(
         _save_ctx()
         return "No worries 🙂 Want to see more options or pick a different dish?"
 
-    # ── ADD INTENT — the main ordering path ───────────────────────────────────
-    if _is_add_intent(msg):
-        selected = _find_best_item_match(message, items)
-        if not selected and pending_item:
-            selected = next(
-                (i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)),
-                None,
-            )
-        if not selected:
-            _save_ctx()
-            return "Of course! 😊 Which dish would you like to add?"
-
-        qty = _extract_qty(message) or 1
-        # If qty equals a detected people count it's a party qty not item qty → handle separately
-        people = _extract_people_count(message)
-        if people and qty == people:
-            qty = 1
-
-        prior_stage = stage
-        reply = _build_add_reply(ctx, selected, qty)
-        # Preserve checkout stage so we don't interrupt flow
-        ctx["stage"] = prior_stage
-        ctx.update({"pending_item": None, "pending_price": None, "pending_qty": None})
-        _save_ctx()
-        return reply
-
     # ── INGREDIENT QUERY ──────────────────────────────────────────────────────
     if _is_ingredient_query(message):
         best = _find_best_item_match(message, items) or (
@@ -1178,6 +1165,32 @@ def _fallback_reply(
             ctx.update({"pending_item": selected.name, "pending_price": int(selected.price or 0)})
             _save_ctx()
             return f"How many people are you ordering *{selected.name}* for? I'll suggest the right quantity 🍽️"
+
+    # ── ADD INTENT — the main ordering path ───────────────────────────────────
+    if _is_add_intent(msg):
+        selected = _find_best_item_match(message, items)
+        if not selected and pending_item:
+            selected = next(
+                (i for i in items if _normalize_text(i.name or "") == _normalize_text(pending_item)),
+                None,
+            )
+        if not selected:
+            _save_ctx()
+            return "Of course! 😊 Which dish would you like to add?"
+
+        qty = _extract_qty(message) or 1
+        # If qty equals a detected people count it's likely party size mention, not item qty.
+        people = _extract_people_count(message)
+        if people and qty == people:
+            qty = 1
+
+        prior_stage = stage
+        reply = _build_add_reply(ctx, selected, qty)
+        # Preserve checkout stage so we don't interrupt flow
+        ctx["stage"] = prior_stage
+        ctx.update({"pending_item": None, "pending_price": None, "pending_qty": None})
+        _save_ctx()
+        return reply
 
     # ── EXPLICIT ORDER INTENT ─────────────────────────────────────────────────
     if _is_order_intent(msg):
@@ -1238,7 +1251,7 @@ def _fallback_reply(
 
     # ── GENERIC MENU KEYWORD ──────────────────────────────────────────────────
     if any(k in msg for k in ["menu", "what do you have", "available"]):
-        return _format_menu(items, dietary_pref=dietary_pref)
+        return _format_menu(items, dietary_pref="all")
 
     # ── LAST RESORT ───────────────────────────────────────────────────────────
     cart_lines = ctx.get("order_lines") or []
