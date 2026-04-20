@@ -61,7 +61,7 @@ export default function BasicInfoStep() {
     } finally {
       setFetching(false);
     }
-  }, [reset, router]);
+  }, [reset]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

@@ -192,7 +192,7 @@ export default function EditBasicInfoPage() {
         router.replace("/restaurant/login");
       })
       .finally(() => setFetching(false));
-  }, [reset, router]);
+  }, [reset]);
 
   const onSubmit = async (data) => {
     setSaving(true);

@@ -271,7 +271,7 @@ export default function EditMenuPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
