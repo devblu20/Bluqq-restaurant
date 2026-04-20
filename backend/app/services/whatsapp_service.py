@@ -1549,8 +1549,8 @@ def simulate_chat(
 # ═════════════════════════════════════════════════════════════════════════════
 
 def send_whatsapp_message(cfg: RestaurantWhatsappConfig, to_phone: str, message: str):
-    phone_number_id = (cfg.phone_number_id or "").strip()
-    access_token    = (cfg.access_token or "").strip() or (os.getenv("WHATSAPP_ACCESS_TOKEN") or "").strip()
+    phone_number_id = (cfg.phone_number_id or "").strip().strip('"').strip("'")
+    access_token    = (cfg.access_token or "").strip().strip('"').strip("'") or (os.getenv("WHATSAPP_ACCESS_TOKEN") or "").strip().strip('"').strip("'")
 
     if not phone_number_id or not access_token:
         return False, "Missing phone_number_id or access_token"
@@ -1577,7 +1577,27 @@ def send_whatsapp_message(cfg: RestaurantWhatsappConfig, to_phone: str, message:
             return True, None
     except HTTPError as exc:
         try:
-            return False, exc.read().decode("utf-8")
+            raw = exc.read().decode("utf-8")
+            parsed = json.loads(raw)
+            err = parsed.get("error") or {}
+            code = err.get("code")
+            msg = (err.get("message") or "").strip()
+            details = (err.get("error_data") or {}).get("details")
+
+            if code == 131005:
+                return (
+                    False,
+                    "WhatsApp access denied (131005): token/permissions are invalid for this phone number. "
+                    "Use a permanent System User token with whatsapp_business_messaging and whatsapp_business_management, "
+                    "and ensure the phone_number_id belongs to the same WABA."
+                )
+            if code == 190:
+                return False, "WhatsApp token expired or invalid (190). Generate a fresh permanent token and update config."
+
+            concise = msg or "WhatsApp API request failed"
+            if details:
+                concise = f"{concise} ({details})"
+            return False, concise
         except Exception:
             return False, str(exc)
     except Exception as exc:
