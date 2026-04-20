@@ -1,6 +1,8 @@
 {
-  "trailingSlash": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/$1" }
+    {
+      "source": "/((?!_next|favicon.ico).*)",
+      "destination": "/"
+    }
   ]
 }

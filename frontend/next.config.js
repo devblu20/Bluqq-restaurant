@@ -5,7 +5,7 @@ module.exports = {
     ignoreDuringBuilds: true,
   },
 
-  trailingSlash: true,
+  // output: 'export' bilkul mat likhna  ← already nahi hai, good
 
   webpack: (config) => {
     config.experiments = {
