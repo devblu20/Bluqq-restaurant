@@ -35,7 +35,7 @@ export default function MenuPage() {
     const id = localStorage.getItem("restaurant_id");
     if (!id) { router.replace("/restaurant/login"); return; }
     setRestaurantId(id);
-  }, [router]);
+  }, []);
 
   const loadMenuData = useCallback(async () => {
     if (!restaurantId) return;

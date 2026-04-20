@@ -30,7 +30,7 @@ export function useRestaurantAuth() {
     }
 
     checkAuth();
-  }, [router]);
+  }, []);
 
   return { restaurant, loading, restaurantId: restaurant?.id };
 }

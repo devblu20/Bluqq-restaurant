@@ -53,7 +53,7 @@ export default function OnboardingMenuPage() {
       return;
     }
     setRestaurantId(id);
-  }, [router]);
+  }, []);
 
   const loadMenu = useCallback(async () => {
     if (!restaurantId) return;

@@ -92,7 +92,7 @@ export default function EditOrderSettingsPage() {
       })
       .catch(() => toast.error("Failed to load settings"))
       .finally(() => setFetching(false));
-  }, [reset, router]);
+  }, [reset]);
 
   const onSubmit = async (data) => {
     setSaving(true);
