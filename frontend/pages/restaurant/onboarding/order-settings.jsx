@@ -35,7 +35,6 @@ export default function OrderSettingsStep() {
         currency: data.currency || "INR",
       });
       toast.success("Order settings saved!");
-      router.push("/restaurant/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to save");
     } finally {

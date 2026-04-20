@@ -11,6 +11,7 @@ const PROTECTED_ROUTES = [
   "/restaurant/profile",
   "/restaurant/whatsapp-chat",
   "/restaurant/menu-manager",
+  "/restaurant/onboarding", // ← ADD KARO
 ];
 
 export default function App({ Component, pageProps }) {
