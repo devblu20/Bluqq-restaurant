@@ -4,24 +4,27 @@ import { getMe } from "../services/api";
 
 export function useRestaurantAuth() {
   const [restaurant, setRestaurant] = useState(null);
+  const [restaurantId, setRestaurantId] = useState(null); // ← alag state
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     async function checkAuth() {
       const token = localStorage.getItem("token");
-      const restaurantId = localStorage.getItem("restaurant_id");
+      const id = localStorage.getItem("restaurant_id");
 
-      if (!token || !restaurantId) {
-        router.replace("/restaurant/login");
+      if (!token || !id) {
+        // _app.js handle kar raha hai — bas loading false karo
+        setLoading(false);
         return;
       }
+
+      setRestaurantId(id); // ← pehle set karo
 
       try {
         const res = await getMe();
         setRestaurant(res.data);
       } catch (err) {
-        console.error("Auth check failed", err);
         localStorage.clear();
         router.replace("/restaurant/login");
       } finally {
@@ -30,7 +33,11 @@ export function useRestaurantAuth() {
     }
 
     checkAuth();
-  }, []);
+  }, []); // ← router dependency nahi
 
-  return { restaurant, loading, restaurantId: restaurant?.id };
+  return { 
+    restaurant, 
+    loading, 
+    restaurantId // ← restaurant.id se nahi, localStorage se
+  };
 }

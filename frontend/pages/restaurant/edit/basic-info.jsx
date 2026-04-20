@@ -22,9 +22,6 @@ export default function EditBasicInfoPage() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const id    = localStorage.getItem("restaurant_id");
-    if (!token || !id) { router.replace("/restaurant/login"); return; }
 
     Promise.all([getMe(), getRestaurant(id)])
       .then(([meRes, restRes]) => {

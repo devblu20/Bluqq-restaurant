@@ -172,9 +172,8 @@ export default function EditBasicInfoPage() {
   const ownerInitials = watchedOwner?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "R";
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const id    = localStorage.getItem("restaurant_id");
-    if (!token || !id) { router.replace("/restaurant/login"); return; }
+    const id = localStorage.getItem("restaurant_id"); // ← YEH ADD KARO
+  if (!id) return;
 
     Promise.all([getMe(), getRestaurant(id)])
       .then(([meRes, restRes]) => {
