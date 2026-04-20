@@ -5,6 +5,8 @@ module.exports = {
     ignoreDuringBuilds: true,
   },
 
+  // output: 'export' bilkul mat likhna  ← already nahi hai, good
+
   webpack: (config) => {
     config.experiments = {
       ...config.experiments,
