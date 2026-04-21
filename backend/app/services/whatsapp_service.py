@@ -530,7 +530,7 @@ def _is_party_catering_intent(msg: str) -> bool:
 
 
 def _is_budget_intent(msg: str) -> bool:
-    """Detect when user mentions a budget amount."""
+    """Detect when user mentions a budget amount — NOT just a people count."""
     return bool(re.search(
         r"(budget|within|under|upto|up to|max|maximum|spend|afford|cost under|below)\s*[₹rs]?\s*\d+|"
         r"[₹rs]\s*\d+\s*(budget|max|limit|only|is my budget|is the budget)|"
@@ -541,10 +541,27 @@ def _is_budget_intent(msg: str) -> bool:
 
 
 def _extract_budget_amount(msg: str) -> int | None:
-    """Extract numeric budget value from message."""
-    match = re.search(r"[₹rs]?\s*(\d{2,6})", msg, re.IGNORECASE)
-    if match:
-        return int(match.group(1))
+    """Extract numeric budget value — skip numbers that are clearly people counts."""
+    # If the number is followed by people-related words, it's a people count, not budget
+    people_pattern = re.compile(
+        r"\b(\d+)\s*(people|persons|guests|pax|person|log|bande|members)\b",
+        re.IGNORECASE
+    )
+    people_numbers = {m.group(1) for m in people_pattern.finditer(msg)}
+
+    # Look for budget-specific patterns only
+    budget_patterns = [
+        r"[₹]\s*(\d{2,6})",                         # ₹8000
+        r"\brs\.?\s*(\d{2,6})\b",                   # Rs 8000
+        r"budget\s*(?:is|of|=)?\s*[₹rs]*\s*(\d{2,6})",  # budget is 8000
+        r"(within|under|upto|up to|below|max)\s*[₹rs]*\s*(\d{2,6})",  # under 8000
+    ]
+    for pat in budget_patterns:
+        for m in re.finditer(pat, msg, re.IGNORECASE):
+            # Get the last group (the number)
+            num_str = m.group(m.lastindex)
+            if num_str and num_str not in people_numbers:
+                return int(num_str)
     return None
 
 
@@ -1501,7 +1518,7 @@ def _fallback_reply(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  AI PROMPT BUILDER — now includes system prompt + cart state
+#  AI PROMPT BUILDER — pure AI mode
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _build_waiter_prompt(
@@ -1511,64 +1528,129 @@ def _build_waiter_prompt(
     customer_message: str,
     cfg: RestaurantWhatsappConfig,
     ctx: dict,
-) -> str:
+) -> list:
+    """Build messages array for OpenAI — returns full conversation history."""
     restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
     items = (
         db.query(MenuItem)
         .filter(MenuItem.restaurant_id == restaurant_id, MenuItem.is_available == True)
-        .limit(80)
+        .limit(100)
         .all()
     )
 
+    # Build structured menu
     menu_lines = []
     for item in items:
-        price     = int(item.price) if item.price is not None else 0
-        tag_icon  = "🌿" if _item_is_veg(item) else "🍖"
-        menu_lines.append(f"- {tag_icon} {item.name} (₹{price})")
+        price    = int(item.price) if item.price is not None else 0
+        tag      = "VEG" if _item_is_veg(item) else "NON-VEG"
+        desc     = f" | {item.description}" if getattr(item, "description", None) else ""
+        menu_lines.append(f"- {item.name} | ₹{price} | {tag}{desc}")
+    menu_text = "\n".join(menu_lines) if menu_lines else "Menu not configured yet."
 
-    menu_text = "\n".join(menu_lines) if menu_lines else "- Menu not configured yet"
-    custom    = (cfg.custom_prompt or "").strip()
-    custom_block = f"\nCustom style: {custom}" if custom else ""
-    convo     = _get_recent_conversation_context(db, restaurant_id, customer_phone)
-    restaurant_name = restaurant.name if restaurant else "this restaurant"
-
-    # Inject current cart state so AI never "forgets" it
+    # Build cart block
     order_lines = ctx.get("order_lines") or []
     if order_lines:
-        cart_lines = []
-        for l in order_lines:
-            cart_lines.append(
-                f"  • {l.get('name')} x {l.get('qty')} — ₹{l.get('line_total', 0)}"
-            )
-        cart_block = "Current cart:\n" + "\n".join(cart_lines)
+        cart_lines = [f"  • {l['name']} x {l['qty']} @ ₹{l['unit_price']} = ₹{l['line_total']}" for l in order_lines]
+        subtotal   = sum(int(l.get("line_total", 0)) for l in order_lines)
+        cart_block = "CURRENT CART:\n" + "\n".join(cart_lines) + f"\nSubtotal: ₹{subtotal}"
     else:
-        cart_block = "Current cart: empty"
+        cart_block = "CURRENT CART: empty"
 
-    # Build checkout stage hint so AI knows what phase we're in
-    stage = ctx.get("stage", "")
-    stage_hints = {
-        "awaiting_name":    "Currently collecting customer NAME for checkout.",
-        "awaiting_contact": "Currently collecting customer CONTACT NUMBER for checkout.",
-        "awaiting_address": "Currently collecting customer ADDRESS for checkout.",
-        "confirmed":        "Order already confirmed. Thank the customer warmly.",
+    # Checkout stage
+    stage = ctx.get("stage") or ""
+    stage_map = {
+        "awaiting_name":    "CHECKOUT STAGE: Waiting for customer's NAME.",
+        "awaiting_contact": "CHECKOUT STAGE: Waiting for customer's PHONE NUMBER.",
+        "awaiting_address": "CHECKOUT STAGE: Waiting for customer's DELIVERY ADDRESS.",
+        "confirmed":        "CHECKOUT STAGE: Order is already confirmed.",
     }
-    stage_block = f"Checkout stage: {stage_hints[stage]}" if stage in stage_hints else ""
+    stage_block = stage_map.get(stage, "")
 
-    return (
-        f"Restaurant: {restaurant_name}\n"
-        f"Tone: {cfg.tone or 'friendly'}\n"
-        f"{custom_block}\n"
-        f"{stage_block}\n\n"
-        f"{cart_block}\n\n"
-        f"Available menu:\n{menu_text}\n\n"
-        f"Recent conversation:\n{convo}\n\n"
-        f"Customer's latest message (may have typos/Hinglish — understand the intent):\n\"{customer_message}\"\n\n"
-        f"Reply naturally as Rohan the waiter. Keep it short unless detail is needed. English only."
+    # Collected checkout info
+    checkout_info = []
+    if ctx.get("customer_name"):    checkout_info.append(f"Name: {ctx['customer_name']}")
+    if ctx.get("customer_contact"): checkout_info.append(f"Phone: {ctx['customer_contact']}")
+    if ctx.get("customer_address"): checkout_info.append(f"Address: {ctx['customer_address']}")
+    checkout_block = ("Collected so far: " + " | ".join(checkout_info)) if checkout_info else ""
+
+    custom = (cfg.custom_prompt or "").strip()
+    restaurant_name = restaurant.name if restaurant else "this restaurant"
+
+    system_prompt = f"""You are Rohan, a smart human waiter at *{restaurant_name}* responding on WhatsApp.
+
+MENU (use ONLY these items — never invent items or prices):
+{menu_text}
+
+{cart_block}
+{stage_block}
+{checkout_block}
+{"Custom instructions: " + custom if custom else ""}
+
+━━━ YOUR JOB ━━━
+You must ALWAYS respond in this exact JSON format (no extra text, no markdown):
+{{
+  "reply": "your WhatsApp message to the customer",
+  "cart_action": "none" | "add" | "remove" | "clear",
+  "item_name": "exact item name from menu or null",
+  "qty": number or null,
+  "checkout_field": null | "name" | "contact" | "address",
+  "checkout_value": "value provided by customer or null",
+  "start_checkout": true | false
+}}
+
+━━━ CART RULES ━━━
+- When customer orders/adds an item → set cart_action="add", item_name=exact menu name, qty=number
+- When customer removes an item → set cart_action="remove", item_name=exact menu name
+- When customer says clear/reset → set cart_action="clear"
+- Always use the EXACT item name from the menu
+- If item is slightly misspelled, match it to closest menu item and use the correct name
+- Always show updated cart in reply after any cart action
+
+━━━ CHECKOUT RULES ━━━
+- When customer says "confirm order", "place order", "done", "checkout" → set start_checkout=true
+- During checkout, collect name → phone → address one at a time
+- Set checkout_field and checkout_value when customer provides their details
+- After address collected, show full order summary with all items, total, and delivery time
+
+━━━ REPLY STYLE ━━━
+- Sound like a real human waiter texting on WhatsApp — warm, natural, SHORT
+- Handle typos/Hinglish — understand intent, not just words
+- Use 0-2 emojis per message naturally
+- NEVER use robotic phrases like "I'd be happy to assist"
+- If item not found → ask "Did you mean [closest item]?"
+- If you don't know something → say so simply
+- Always reply in English only
+- For budget questions → suggest items that fit within the budget with estimated total
+- For party/catering → ask people count, suggest quantities, handle budget if mentioned
+
+━━━ IMPORTANT ━━━
+- Reply ONLY valid JSON. No explanation outside JSON.
+- item_name must EXACTLY match a menu item name or be null"""
+
+    # Build conversation history
+    recent_msgs = (
+        db.query(WhatsAppMessage)
+        .filter(
+            WhatsAppMessage.restaurant_id == restaurant_id,
+            WhatsAppMessage.customer_phone == customer_phone,
+        )
+        .order_by(WhatsAppMessage.created_at.desc())
+        .limit(12)
+        .all()[::-1]
     )
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for row in recent_msgs:
+        role = "user" if row.direction == "incoming" else "assistant"
+        messages.append({"role": role, "content": row.message})
+
+    # Add current message
+    messages.append({"role": "user", "content": customer_message})
+    return messages
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  GENERATE AI REPLY
+#  GENERATE AI REPLY — pure AI, no rule-based bypass
 # ═════════════════════════════════════════════════════════════════════════════
 
 def generate_ai_reply(
@@ -1580,87 +1662,103 @@ def generate_ai_reply(
 ) -> str:
     conv = _get_or_create_conversation(db, restaurant_id, customer_phone)
     ctx  = dict(conv.context_json or {})
-    first_turn = not bool(ctx.get("welcomed"))
-
-    # Always use rule-based handler for strong/known intents — guarantees correctness
-    if _has_strong_intent(customer_message, ctx.get("stage")):
-        return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
+        # No API key — fall back to rule-based
         return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
 
     try:
         from openai import OpenAI
-
         model  = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         client = OpenAI(api_key=api_key)
-        prompt = _build_waiter_prompt(
+
+        messages = _build_waiter_prompt(
             db, restaurant_id, customer_phone, customer_message, cfg, ctx
         )
+
         response = client.chat.completions.create(
             model=model,
-            temperature=0.5,
-            max_tokens=300,
-            messages=[
-                {"role": "system", "content": _WAITER_SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt},
-            ],
+            temperature=0.4,
+            max_tokens=500,
+            response_format={"type": "json_object"},
+            messages=messages,
         )
-        text = (response.choices[0].message.content or "").strip()
 
-        # Safety net — route back to rule-based if AI response is insufficient
-        normalized_user = _normalize_text(customer_message)
-        if _is_show_full_menu_intent(normalized_user) and "*Full Menu*" not in text:
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_starter_intent(normalized_user) and "Starter" not in text:
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_ingredient_query(normalized_user) and "ingredient" not in _normalize_text(text):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if ctx.get("stage") == "awaiting_confirmation" and _is_affirmative(customer_message):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_party_catering_intent(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_add_intent(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_remove_intent(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_veg_menu_intent(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _is_nonveg_menu_intent(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-        if _extract_item_keyword_from_options_query(normalized_user):
-            return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
+        raw  = (response.choices[0].message.content or "").strip()
+        data = json.loads(raw)
 
-        # Rewrite Devanagari replies to English
-        if text and _contains_devanagari(text):
+        reply          = (data.get("reply") or "").strip()
+        cart_action    = data.get("cart_action", "none")
+        item_name      = data.get("item_name")
+        qty            = data.get("qty") or 1
+        checkout_field = data.get("checkout_field")
+        checkout_value = data.get("checkout_value")
+        start_checkout = data.get("start_checkout", False)
+
+        # ── Apply cart actions ────────────────────────────────────────────────
+        items = (
+            db.query(MenuItem)
+            .filter(MenuItem.restaurant_id == restaurant_id, MenuItem.is_available == True)
+            .all()
+        )
+
+        if cart_action == "add" and item_name:
+            # Find exact price from DB
+            matched = next(
+                (i for i in items if _normalize_text(i.name) == _normalize_text(item_name)),
+                _find_best_item_match(item_name, items),
+            )
+            if matched:
+                price = int(matched.price or 0)
+                _append_order_line(ctx, matched.name, int(qty), price)
+
+        elif cart_action == "remove" and item_name:
+            _remove_order_line(ctx, item_name)
+
+        elif cart_action == "clear":
+            ctx["order_lines"] = []
+
+        # ── Apply checkout field ──────────────────────────────────────────────
+        if checkout_field == "name" and checkout_value:
+            ctx["customer_name"]  = str(checkout_value).strip().title()
+            ctx["stage"]          = "awaiting_contact"
+        elif checkout_field == "contact" and checkout_value:
+            digits = re.sub(r"\D", "", str(checkout_value))
+            ctx["customer_contact"] = digits[-10:] if len(digits) >= 10 else digits
+            ctx["stage"]            = "awaiting_address"
+        elif checkout_field == "address" and checkout_value:
+            ctx["customer_address"] = str(checkout_value).strip()
+            ctx["stage"]            = "confirmed"
+
+        # ── Start checkout ────────────────────────────────────────────────────
+        if start_checkout and not ctx.get("stage"):
+            ctx["stage"] = "awaiting_name"
+
+        # ── Mark welcomed ─────────────────────────────────────────────────────
+        ctx["welcomed"] = True
+
+        # ── Save context ──────────────────────────────────────────────────────
+        conv.context_json = ctx
+        db.commit()
+
+        # ── Rewrite if Devanagari slipped in ─────────────────────────────────
+        if reply and _contains_devanagari(reply):
             rewrite = client.chat.completions.create(
                 model=model,
                 temperature=0.2,
-                max_tokens=300,
+                max_tokens=400,
                 messages=[
-                    {"role": "system", "content": "Rewrite the text in natural simple English only. Keep meaning same."},
-                    {"role": "user",   "content": text},
+                    {"role": "system", "content": "Rewrite in natural English only. Keep meaning exactly same."},
+                    {"role": "user",   "content": reply},
                 ],
             )
-            text = (rewrite.choices[0].message.content or text).strip()
+            reply = (rewrite.choices[0].message.content or reply).strip()
 
-        final_text = text or _fallback_reply(db, restaurant_id, customer_phone, customer_message)
-
-        if first_turn:
-            ctx["welcomed"] = True
-            conv.context_json = ctx
-            db.commit()
-            if _is_greeting(customer_message):
-                return _compose_greeting_only(db, restaurant_id)
-            if not _normalize_text(final_text).startswith("welcome"):
-                welcome    = _compose_first_turn_greeting(db, restaurant_id)
-                final_text = f"{welcome}\n\n{final_text}"
-
-        return final_text
+        return reply or _fallback_reply(db, restaurant_id, customer_phone, customer_message)
 
     except Exception as exc:
-        print(f"[whatsapp_service] OpenAI reply failed: {exc}")
+        print(f"[whatsapp_service] AI reply failed: {exc}")
         return _fallback_reply(db, restaurant_id, customer_phone, customer_message)
 
 
