@@ -529,6 +529,62 @@ def _is_party_catering_intent(msg: str) -> bool:
     ])
 
 
+def _is_budget_intent(msg: str) -> bool:
+    """Detect when user mentions a budget amount."""
+    return bool(re.search(
+        r"(budget|within|under|upto|up to|max|maximum|spend|afford|cost under|below)\s*[₹rs]?\s*\d+|"
+        r"[₹rs]\s*\d+\s*(budget|max|limit|only|is my budget|is the budget)|"
+        r"my budget is\s*[₹rs]?\s*\d+|"
+        r"budget\s*(is|of|=)\s*[₹rs]?\s*\d+",
+        msg, re.IGNORECASE
+    ))
+
+
+def _extract_budget_amount(msg: str) -> int | None:
+    """Extract numeric budget value from message."""
+    match = re.search(r"[₹rs]?\s*(\d{2,6})", msg, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _handle_budget_intent(message: str, items, people_count: int = None) -> str:
+    """Suggest a balanced meal within budget, optionally for N people."""
+    budget = _extract_budget_amount(_normalize_text(message))
+    if not budget:
+        return "Could you share your budget amount? Like ₹500 or ₹2000, and I'll suggest the best options 😊"
+
+    available = [i for i in items if i.price is not None and int(i.price) <= budget]
+    if not available:
+        return f"Hmm, our items start a bit above ₹{budget}. Would you like to see our full menu to find something that works?"
+
+    # Sort by price descending to get best value combos
+    available.sort(key=lambda i: int(i.price or 0), reverse=True)
+
+    # Greedily pick items that fit within budget
+    selected, total = [], 0
+    used_names = set()
+    for item in available:
+        price = int(item.price or 0)
+        if total + price <= budget and item.name not in used_names:
+            selected.append(item)
+            total += price
+            used_names.add(item.name)
+        if len(selected) >= 5:
+            break
+
+    if not selected:
+        return f"Hmm, I couldn't find a good combination within ₹{budget}. Want to see the full menu instead?"
+
+    people_str = f" for *{people_count} people*" if people_count else ""
+    lines = [f"Here's what I'd suggest{people_str} within *₹{budget}* 🍽️", ""]
+    for item in selected:
+        tag = "🌿" if _item_is_veg(item) else "🍖"
+        lines.append(f"• {tag} {item.name} — ₹{int(item.price)}")
+    lines += ["", f"*Estimated total: ₹{total}*", "", "Want me to add all of these to your cart? Or pick specific items?"]
+    return "\n".join(lines)
+
+
 def _is_order_intent(msg: str) -> bool:
     return any(k in msg for k in [
         "i want to order", "order this", "place order",
@@ -789,18 +845,45 @@ def _compose_first_turn_greeting(db: Session, restaurant_id: str) -> str:
 
 def _handle_party_intent(db: Session, restaurant_id: str, message: str, items) -> str:
     people_count = _extract_people_count(message)
+    budget       = _extract_budget_amount(_normalize_text(message))
     people_str   = f"*{people_count} people*" if people_count else "your group"
-    top_names    = ", ".join(i.name for i in items[:4]) if items else "our popular dishes"
+
+    # Budget + party together → suggest combo within budget
+    if budget and items:
+        per_person_budget = (budget // people_count) if people_count else budget
+        available = sorted(
+            [i for i in items if i.price is not None and int(i.price) <= per_person_budget],
+            key=lambda i: int(i.price or 0), reverse=True,
+        )
+        if available:
+            selected, total, used_names = [], 0, set()
+            for item in available:
+                if item.name not in used_names and len(selected) < 5:
+                    selected.append(item)
+                    total += int(item.price or 0) * (people_count or 1)
+                    used_names.add(item.name)
+            lines = [f"🎉 For *{people_str}* within *₹{budget}*, here's a great combo:", ""]
+            for item in selected:
+                tag = "🌿" if _item_is_veg(item) else "🍖"
+                qty = people_count or 1
+                lines.append(f"• {tag} {item.name} × {qty} — ₹{int(item.price or 0) * qty}")
+            lines += ["", f"*Estimated total: ₹{total}* ✅",
+                      "", "Want me to add all of these? Or swap any item?"]
+            return "\n".join(lines)
+
+    top_names = ", ".join(i.name for i in items[:4]) if items else "our popular dishes"
     if people_count:
         return (
             f"🎉 Love it! We'd be happy to arrange for {people_str}.\n"
             f"Popular choices: {top_names}.\n"
-            "Tell me which dishes you'd like and I'll suggest the right quantities!"
+            "Tell me which dishes you'd like and I'll suggest the right quantities!\n"
+            "_(Share your budget too if you'd like a curated combo within it)_ 😊"
         )
     return (
         f"🎉 Happy to help plan something for {people_str}!\n"
         f"Popular choices: {top_names}.\n"
-        "How many people are attending? I'll figure out quantities once you pick dishes."
+        "How many people are attending? I'll figure out quantities once you pick dishes.\n"
+        "_(Share your budget and I'll suggest a combo that fits!)_ 😊"
     )
 
 
@@ -896,6 +979,16 @@ def _is_start_over_intent(msg: str) -> bool:
     }
 
 
+def _is_checkout_intent(msg: str) -> bool:
+    """User explicitly wants to place/confirm the order."""
+    return any(k in msg for k in [
+        "confirm order", "place order", "checkout", "done ordering",
+        "that's all", "thats all", "ready to order", "finalize",
+        "i am done", "im done", "place it", "order karna hai",
+        "order kar do", "confirm kar do",
+    ])
+
+
 def _closest_item_hint(message: str, items) -> str:
     best = _find_best_item_match(message, items)
     if best:
@@ -911,6 +1004,7 @@ def _has_strong_intent(msg: str, stage: str) -> bool:
     m = _normalize_text(msg)
     return (
         _is_start_over_intent(m)
+        or _is_checkout_intent(m)
         or
         stage in {
             "awaiting_confirmation", "awaiting_name",
@@ -927,6 +1021,7 @@ def _has_strong_intent(msg: str, stage: str) -> bool:
         or _is_ingredient_query(m)
         or _is_veg_query(m)
         or _is_party_catering_intent(m)
+        or _is_budget_intent(m)
         or _is_affirmative(m)
         or _is_veg_menu_intent(m)
         or _is_nonveg_menu_intent(m)
@@ -1039,9 +1134,24 @@ def _fallback_reply(
         _save_ctx()
         return "Done, I have cleared the current order. What would you like to order now?"
 
+    # ── CHECKOUT INTENT ───────────────────────────────────────────────────────
+    if _is_checkout_intent(msg):
+        cart_lines = ctx.get("order_lines") or []
+        if not cart_lines:
+            return "Your cart is empty 🛒 Add some items first and then we'll place the order!"
+        ctx["stage"] = "awaiting_name"
+        _save_ctx()
+        cart_text = _format_cart(cart_lines)
+        return f"Great! Let's place your order 😊\n\n{cart_text}\n\nWhat's your name for the order?"
+
     # ── PARTY INTENT ──────────────────────────────────────────────────────────
     if _is_party_catering_intent(msg):
         return _handle_party_intent(db, restaurant_id, message, items)
+
+    # ── BUDGET INTENT ─────────────────────────────────────────────────────────
+    if _is_budget_intent(msg):
+        people_count = _extract_people_count(message)
+        return _handle_budget_intent(message, items, people_count)
 
     # ── FIX 2: CONFIRMED STAGE — send thank-you, don't fall through ───────────
     if stage == "confirmed":
@@ -1071,6 +1181,17 @@ def _fallback_reply(
 
     # ── CHECKOUT FLOW STAGES ──────────────────────────────────────────────────
     if stage == "awaiting_name":
+        # If user is adding more items mid-checkout, handle that first
+        if _is_add_intent(msg) or _is_order_intent(msg):
+            selected = _find_best_item_match(message, items)
+            if selected:
+                qty = _extract_qty(message) or 1
+                reply = _build_add_reply(ctx, selected, qty)
+                ctx["stage"] = "awaiting_name"  # keep checkout stage
+                _save_ctx()
+                return f"{reply}\n\nWhenever you're ready, just share your name to place the order 😊"
+            return f"Sure 👍 {_closest_item_hint(message, items)}\n\nOnce you're done adding, just share your name."
+
         extracted_name, wants_more = _parse_name_and_add_more(message)
         if wants_more:
             if extracted_name:
@@ -1127,13 +1248,13 @@ def _fallback_reply(
         ctx.update({
             "pending_item": None, "pending_qty": None,
             "pending_price": None, "last_confirmation_prompt_at": None,
-            "stage": "awaiting_name",
+            "stage": None,   # ← reset stage, don't go to checkout yet
         })
         _save_ctx()
         cart_text = _format_cart(ctx["order_lines"])
         return (
-            f"Awesome, noted ✅\n\n{cart_text}\n\n"
-            f"{_next_details_prompt('awaiting_name')}"
+            f"Added ✅\n\n{cart_text}\n\n"
+            "Anything else you'd like to add? Or say *confirm order* when ready 😊"
         )
 
     # ── NEGATIVE DURING CONFIRMATION ──────────────────────────────────────────
