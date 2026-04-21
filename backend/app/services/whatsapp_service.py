@@ -164,7 +164,9 @@ def update_config(db: Session, restaurant_id: str, payload: dict) -> RestaurantW
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").strip().lower())
+    # FIX 1: Strip punctuation so "fries?" → "fries", "okay!" → "okay"
+    cleaned = re.sub(r"[^\w\s]", " ", (text or "").lower())
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def _format_price(price) -> str:
@@ -1006,6 +1008,32 @@ def _fallback_reply(
     if _is_party_catering_intent(msg):
         return _handle_party_intent(db, restaurant_id, message, items)
 
+    # ── FIX 2: CONFIRMED STAGE — send thank-you, don't fall through ───────────
+    if stage == "confirmed":
+        # User said okay/thanks after order placed
+        if _is_affirmative(msg) or msg in {
+            "okay", "ok", "thanks", "thank you", "noted", "great",
+            "alright", "fine", "got it", "👍", "thx", "ty",
+        }:
+            return (
+                "Thank you! 🙏 Your order is confirmed and will be delivered in ~30 mins.\n"
+                "Feel free to reach out if you need anything else!"
+            )
+        # User wants to order more — reset stage and continue
+        if _is_add_intent(msg) or _is_show_full_menu_intent(msg) or _is_starter_intent(msg):
+            ctx["stage"] = None
+            ctx["order_lines"] = []
+            _save_ctx()
+            return (
+                "Sure! Let's start a fresh order 😊 What would you like?\n"
+                "_(Your previous order has been placed.)_"
+            )
+        # Anything else after confirmed
+        return (
+            "Your order is already confirmed ✅ It'll be with you in ~30 mins.\n"
+            "Want to place a new order?"
+        )
+
     # ── CHECKOUT FLOW STAGES ──────────────────────────────────────────────────
     if stage == "awaiting_name":
         extracted_name, wants_more = _parse_name_and_add_more(message)
@@ -1047,8 +1075,19 @@ def _fallback_reply(
     # ── CONFIRM PENDING ITEM → ADD TO CART + BEGIN CHECKOUT ───────────────────
     if stage == "awaiting_confirmation" and _is_affirmative(message):
         price     = int(ctx.get("pending_price") or 0)
-        item_name = pending_item or "Selected item"
+        item_name = pending_item
         qty       = int(ctx.get("pending_qty") or 1)
+
+        # FIX 3: Guard against ghost "Selected item x 1 — ₹0" lines
+        if not item_name or price <= 0:
+            ctx.update({
+                "pending_item": None, "pending_qty": None,
+                "pending_price": None, "last_confirmation_prompt_at": None,
+                "stage": None,
+            })
+            _save_ctx()
+            return "Hmm, I lost track of that item 🙈 Could you tell me which dish you'd like to add?"
+
         _append_order_line(ctx, item_name, qty, price)
         ctx.update({
             "pending_item": None, "pending_qty": None,
