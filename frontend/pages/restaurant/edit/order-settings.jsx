@@ -70,9 +70,6 @@ export default function EditOrderSettingsPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const id = localStorage.getItem("restaurant_id");
-    if (!token || !id) { router.replace("/restaurant/login"); return; }
 
     Promise.all([
       getMe(),

@@ -11,6 +11,7 @@ const PROTECTED_ROUTES = [
   "/restaurant/profile",
   "/restaurant/whatsapp-chat",
   "/restaurant/menu-manager",
+  "/restaurant/onboarding",
 ];
 
 export default function App({ Component, pageProps }) {
@@ -26,13 +27,18 @@ export default function App({ Component, pageProps }) {
     );
 
     if (isProtected && (!token || !id)) {
-      router.replace("/restaurant/login");
+      router.replace("/restaurant/login").finally(() => setReady(true));
     } else {
       setReady(true);
     }
   }, [router.pathname]);
 
-  if (!ready) return null;
+  // ↓ Sirf protected routes pe blank screen, baaki pe seedha render karo
+  const isProtected = PROTECTED_ROUTES.some(route =>
+    router.pathname.startsWith(route)
+  );
+
+  if (!ready && isProtected) return null;
 
   return (
     <>

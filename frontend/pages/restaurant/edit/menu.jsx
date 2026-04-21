@@ -258,7 +258,7 @@ export default function EditMenuPage() {
   const [addingCat, setAddingCat] = useState(false);
   const [showCatInput, setShowCatInput] = useState(false);
 
-  const restaurantId = typeof window !== "undefined" ? localStorage.getItem("restaurant_id") : null;
+  const [restaurantId, setRestaurantId] = useState(null);
 
   const fetchData = useCallback(async (id) => {
     try {
@@ -275,9 +275,11 @@ export default function EditMenuPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token || !restaurantId) { router.replace("/restaurant/login"); return; }
-    fetchData(restaurantId);
-  }, [fetchData, restaurantId, router]);
+    const id = localStorage.getItem("restaurant_id");
+    if (!token || !id) { router.replace("/restaurant/login"); return; }
+    setRestaurantId(id);
+    fetchData(id);
+  }, [fetchData, router]);
 
   const handleSaveItem = async (formData) => {
     try {
