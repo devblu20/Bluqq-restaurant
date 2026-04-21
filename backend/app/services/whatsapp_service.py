@@ -397,7 +397,7 @@ Reply ONLY with valid JSON. Nothing else."""
 
     try:
         from openai import OpenAI
-        model  = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+        model  = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         client = OpenAI(api_key=api_key)
 
         response = client.chat.completions.create(
