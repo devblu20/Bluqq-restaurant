@@ -4,8 +4,7 @@ module.exports = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-
-  basePath: "/restaurant",  // ✅ Yeh add karo
+  // basePath NAHI chahiye ← remove karo
 
   webpack: (config) => {
     config.experiments = {
