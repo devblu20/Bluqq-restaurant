@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   UtensilsCrossed, ShoppingBag, Clock, CheckCircle2, XCircle,
   ChefHat, Bike, LayoutGrid, BookOpen, BarChart2, Settings,
-  User, LogOut, Search, Filter, RefreshCw, Eye, Phone,
+  User, LogOut, Search, Filter, RefreshCw, Eye, Phone,MessageCircle,
   MapPin, Calendar, TrendingUp, Loader2, AlertCircle, Package
 } from "lucide-react";
 
