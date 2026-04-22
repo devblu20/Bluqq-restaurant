@@ -70,6 +70,7 @@ export default function EditOrderSettingsPage() {
   });
 
   useEffect(() => {
+    const id = localStorage.getItem("restaurant_id");
 
     Promise.all([
       getMe(),

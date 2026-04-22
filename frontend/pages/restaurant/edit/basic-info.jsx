@@ -22,6 +22,7 @@ export default function EditBasicInfoPage() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   useEffect(() => {
+    const id = localStorage.getItem("restaurant_id");
 
     Promise.all([getMe(), getRestaurant(id)])
       .then(([meRes, restRes]) => {
