@@ -4,9 +4,8 @@ module.exports = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  
-  // ✅ Yeh zaroori hai - static files ka sahi path
-  assetPrefix: "https://bluqq-restaurant.vercel.app",
+
+  basePath: "/restaurant",  // ✅ Yeh add karo
 
   webpack: (config) => {
     config.experiments = {
