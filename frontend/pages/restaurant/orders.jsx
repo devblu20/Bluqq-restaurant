@@ -38,6 +38,7 @@ const TYPE_CONFIG = {
 const NAV_MAIN = [
   { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
   { label: "Menu",      icon: BookOpen,   href: "/restaurant/edit/menu" },
+  { label: "WhatsApp AI", icon: MessageCircle,   href: "/restaurant/whatsapp-chat" },
   { label: "Orders",    icon: ShoppingBag,href: "/restaurant/orders" },
   { label: "Analytics", icon: BarChart2,  href: "/restaurant/analytics" },
 ];
