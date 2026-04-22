@@ -4,7 +4,9 @@ module.exports = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // basePath NAHI chahiye ← remove karo
+
+  // ✅ Yeh zaroori hai
+  assetPrefix: "https://bluqq-restaurant.vercel.app",
 
   webpack: (config) => {
     config.experiments = {
