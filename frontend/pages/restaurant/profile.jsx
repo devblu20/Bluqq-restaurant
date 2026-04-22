@@ -9,13 +9,14 @@ import {
   Loader2, Store, MapPin, Phone, Mail, Save, User,
   UtensilsCrossed, LayoutGrid, BookOpen, ShoppingBag,
   BarChart2, Settings, LogOut, ChevronLeft, Building2,
-  Pencil, CheckCircle2, Globe, Hash,
+  Pencil, CheckCircle2, Globe, Hash,MessageCircle
 } from "lucide-react";
 
 /* ─────────────────────────────── NAV DATA ─────────────────────────────── */
 const NAV_MAIN = [
   { label: "Dashboard", icon: LayoutGrid, href: "/restaurant/dashboard" },
   { label: "Menu",      icon: BookOpen,   href: "/restaurant/edit/menu" },
+  { label: "WhatsApp AI", icon: MessageCircle,   href: "/restaurant/whatsapp-chat" },
   { label: "Orders",    icon: ShoppingBag,href: "/restaurant/orders" },
   { label: "Analytics", icon: BarChart2,  href: "/restaurant/analytics" },
 ];
