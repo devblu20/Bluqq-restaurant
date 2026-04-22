@@ -10,7 +10,7 @@ import {
   UtensilsCrossed, LayoutGrid, BookOpen, ShoppingBag, BarChart2,
   Settings, User, LogOut, TrendingUp, TrendingDown, IndianRupee,
   ShoppingCart, Star, Clock, ArrowUpRight, ArrowDownRight, ChefHat,
-  Bike, Package, Calendar, Zap
+  Bike, Package, Calendar, Zap,MessageCircle
 } from "lucide-react";
 
 /* ── Mock Data ── */
@@ -69,6 +69,7 @@ const CATEGORY_REV = [
 const NAV_MAIN = [
   { label: "Dashboard", icon: LayoutGrid,  href: "/restaurant/dashboard" },
   { label: "Menu",      icon: BookOpen,    href: "/restaurant/edit/menu" },
+  { label: "WhatsApp AI", icon: MessageCircle,   href: "/restaurant/whatsapp-chat" },
   { label: "Orders",    icon: ShoppingBag, href: "/restaurant/orders" },
   { label: "Analytics", icon: BarChart2,   href: "/restaurant/analytics" },
 ];
